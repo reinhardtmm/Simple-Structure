@@ -19,7 +19,7 @@ Lalu buka http://localhost:8765. Three.js r160 dimuat dari CDN jsdelivr lewat im
 - `index.html`: tata letak, CSS, dan importmap. Tidak ada build step.
 - `js/app.js`: scene Three.js, kamera, pemotongan (clipping), urai (explode), toggle lapisan, raycast klik, dan semua panel UI. Daftar komponen dan pengelompokan navigasi ada di konstanta `GROUPS`.
 - `js/core.js`: utilitas bersama.
-  - Rumus: `devLen` (ℓd 25.4.2.3 bentuk sederhana), `ldhGen` (25.4.3.1), `ldhSeis` (18.8.5.1), `ldc` (25.4.9.2), `ashReq` (18.7.5.4).
+  - Rumus: `devLen` (ℓd Tabel 25.4.2.2, bentuk sederhana), `ldhGen` (25.4.3.1), `ldhSeis` (18.8.5.1), `ldc` (25.4.9.2), `ashReq` (18.7.5.4).
   - Geometri: `turtle` (pembuat polyline 2D dengan lengkung), `hoop2D` (sengkang tertutup dengan kait 90 atau 135), `crosstie2D`, `rectCage` (susunan tulangan, sengkang, kait silang, dan hx untuk penampang persegi), `lift3D` (helix kecil supaya dua kait sengkang tidak saling tembus).
   - `renderView`: mesin gambar 2D generik. Memproyeksikan atau memotong model 3D yang sama menjadi SVG, jadi gambar selalu sinkron dengan parameter.
 - `js/comp/*.js`: satu file per komponen.
@@ -62,18 +62,22 @@ Setiap file di `js/comp/` mengekspor objek:
 
 ## Status rujukan SNI
 
-Nomor pasal ditulis dari pengetahuan tentang SNI 2847:2019, yang mengadopsi ACI 318M-14, dan **belum diverifikasi** terhadap dokumen resmi. Prioritas verifikasi:
+SNI 2847:2019 adalah adopsi modifikasi (MOD) dari ACI 318M-14. Beberapa bagian sudah memakai isi ACI 318-19, misalnya Tabel 18.7.5.4 dengan faktor kf dan kn. Semua nomor pasal di kode sudah dicocokkan dengan PDF SNI 2847:2019 pada November 2026. Hal yang perlu diingat saat mengubah kode:
 
-1. Sengkang joint SRPMB, Pasal 15.4.2 (`hbk.js`). Model memasang dua lapis, tetapi syarat persisnya belum pasti.
-2. Rasio spiral tiang SRPMK (`tiang.js`). Sengaja dibuat info, bukan lolos atau gagal, karena rumus kolom 18.7.5.4 mungkin tidak berlaku untuk tiang.
-3. Tabel 18.10.6.4(f) untuk Ash elemen batas dinding (`dinding.js`).
-4. Pasal 18.13.3.3 untuk dimensi dan spasi sengkang sloof, serta 18.13.4.2 untuk daerah kekang tiang.
+- Joint SRPMB (`hbk.js`) memakai 15.4.2: Av ≥ maks(0,062√fc', 0,35)·b·s/fyt, disebar sepanjang tinggi balok (15.4.2.1), dengan s ≤ h/2 balok terendah (15.4.2.2).
+- Kuat geser joint (Tabel 18.8.4.1) memakai koefisien 1,7 untuk 4 sisi, 1,2 untuk 3 sisi atau 2 sisi berlawanan, dan 1,0 untuk kasus lainnya.
+- Tiang SRPMK (`tiang.js`) memakai 18.13.4.3: daerah kekang maks(5D; 1,8 m), serta 18.7.5.2(a) sampai (e), 18.7.5.3, dan Tabel 18.7.5.4 kecuali baris (c) dan (f). Rasio spiral (d) dan (e) karena itu berupa pemeriksaan lolos atau gagal.
+- Sloof: menerus dan diangkur di 18.13.3.1; dimensi ≥ jarak bersih antar kolom/20 dan sengkang ≤ min(b/2; 300) di 18.13.3.2; lentur dari kolom di 18.13.3.3 (ikut 18.6).
+- Fondasi: kait stek ke arah pusat kolom di 18.13.2.2; tulangan transversal kolom di dekat tepi fondasi di 18.13.2.3; anyaman atas akibat gaya angkat di 18.13.2.4.
+- Elemen batas dinding 18.10.6.4(e): hx ≤ min(350; 2/3 tebal) dan s ≤ 1/3 dimensi terkecil. `dinding.js` otomatis menambah baris tulangan tengah arah tebal bila perlu. Tulangan horizontal badan diatur di (h).
+- Tebal minimum pelat satu arah (Tabel 7.3.1.1) hanya dikali (0,4 + fy/700) bila fy > 420 MPa (7.3.1.1.1).
+
+Batas yang belum dimodelkan karena butuh gaya dalam: baris (c) Tabel 18.7.5.4 untuk Pu > 0,3Ag fc', syarat 11.6.2 untuk dinding dengan Vu > 0,5Vc, dan pengecualian rasio dinding khusus bila Vu ≤ 0,083Acv√fc'.
 
 Batas yang ditandai `praktik` memang bukan pasal SNI: zona ℓn/4 balok SRPMB, jarak tiang 2,5D, kepala tiang 75 sampai 150 mm, 2R + T, dan panjang tulangan tumpuan pelat ℓx/4.
 
 ## Ide lanjutan
 
-- Verifikasi pasal setelah PDF SNI tersedia, lalu hapus label belum diverifikasi.
 - Tambahan SRPMM sebagai sistem ketiga.
 - Pelat dengan bukaan, balok T, kolom bulat dengan spiral, dan dinding penahan tanah.
 - Ekspor gambar SVG dan daftar potong tulangan (bar bending schedule).

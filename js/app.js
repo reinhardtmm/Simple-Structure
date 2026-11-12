@@ -192,7 +192,7 @@ function renderChecks(m){
   const b=document.getElementById('badge'); b.textContent=bad?`${bad} gagal`:'lolos'; b.className='badge '+(bad?'bad':'good');
   let h=`<div class="sum ${bad?'bad':'good'}">${bad?`${bad} dari ${n} pemeriksaan tidak terpenuhi`:`${ok} dari ${n} pemeriksaan terpenuhi`}</div>`;
   h+=cs.map(c=>`<div class="chk ${c.ok===null?'info':c.ok?'ok':'bad'}"><div class="ic">${c.ok===null?'i':c.ok?'✓':'✗'}</div><div><div class="t">${c.t}</div><div class="d">${c.d}</div><div class="p">${pasalTxt(c.p)}</div></div></div>`).join('');
-  h+=`<p class="disclaimer">Pemeriksaan ini hanya mencakup detailing dan syarat geometri. Kapasitas lentur, geser, aksial, serta daya dukung tanah tidak dihitung karena memerlukan data beban dan tanah. Nomor pasal mengacu pada SNI 2847:2019 yang mengadopsi ACI 318M-14 dan belum diverifikasi terhadap dokumen resmi. Asumsi: agregat maksimum 20 mm, beton normal, tulangan tanpa lapisan epoksi.</p>`;
+  h+=`<p class="disclaimer">Pemeriksaan ini hanya mencakup detailing dan syarat geometri. Kapasitas lentur, geser, aksial, serta daya dukung tanah tidak dihitung karena memerlukan data beban dan tanah. Nomor pasal mengacu pada SNI 2847:2019, adopsi modifikasi dari ACI 318M-14, dan sudah dicocokkan dengan teks SNI. Pemeriksaan ini tetap alat bantu belajar, bukan pengganti desain oleh perencana. Asumsi: agregat maksimum 20 mm, beton normal, tulangan tanpa lapisan epoksi.</p>`;
   document.getElementById('pane-cek').innerHTML=h;
 }
 function renderDrawings(m){
@@ -208,7 +208,7 @@ function renderDrawings(m){
 }
 function renderTeori(c){
   const t=c.teori; const body=t.common+(c.sysDependent?t[state.sys]:(t.ALL||''));
-  document.getElementById('pane-teori').innerHTML=body+`<p class="disclaimer">Rujukan utama: SNI 2847:2019 Persyaratan Beton Struktural untuk Bangunan Gedung, SNI 1726:2019 untuk kategori desain seismik${c.refExtra||''}. Nomor pasal belum diverifikasi terhadap dokumen resmi.</p>`;
+  document.getElementById('pane-teori').innerHTML=body+`<p class="disclaimer">Rujukan utama: SNI 2847:2019 Persyaratan Beton Struktural untuk Bangunan Gedung, SNI 1726:2019 untuk kategori desain seismik${c.refExtra||''}. Nomor pasal SNI 2847:2019 sudah dicocokkan dengan teks standar.</p>`;
 }
 function save(){ try{ localStorage.setItem('atlas-tulangan-v2',JSON.stringify({comp:state.comp,sys:state.sys,params:state.params,vis:state.vis})); }catch(e){} }
 

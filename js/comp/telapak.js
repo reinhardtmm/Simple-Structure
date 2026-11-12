@@ -15,7 +15,7 @@ export default {
   teori:{
     common:`<h3>Fondasi telapak (tapak setempat)</h3><p>Fondasi telapak menyebarkan beban kolom ke tanah dengan luasan yang lebih besar, sehingga tegangan tanah tidak melampaui daya dukungnya. Telapak bekerja seperti pelat kantilever terbalik: tanah mendorong ke atas, sehingga serat bawah tertarik dan tulangan utama dipasang di bawah dalam dua arah.</p><ul><li><b>Anyaman bawah</b> dua lapis saling tegak lurus. Ujungnya sering dibengkokkan ke atas untuk membantu penjangkaran.</li><li><b>Stek kolom</b> adalah tulangan kolom yang diteruskan ke dalam telapak. Ujung bawahnya diberi kait 90° dan diletakkan di atas anyaman bawah.</li><li><b>Sengkang kolom di dalam telapak</b> memegang posisi stek saat pengecoran.</li><li><b>Lantai kerja</b> beton tipis di bawah telapak menjaga tulangan tetap bersih dan selimut tetap terjaga.</li><li>Ukuran telapak ditentukan dari daya dukung tanah, dan tebalnya dari geser pons serta geser satu arah. Keduanya tidak dihitung di sini.</li></ul>`,
     SRPMB:`<h4>Detailing umum</h4><ul><li><b>Selimut</b> 75 mm karena beton dicor langsung di atas tanah <span class="pasal">Tabel 20.6.1.3.1</span>.</li><li><b>Tebal di atas tulangan bawah</b> minimal 150 mm <span class="pasal">13.3.1.2</span>.</li><li><b>Luas tulangan stek</b> yang melintasi bidang kontak kolom dan telapak minimal 0,005 luas kolom <span class="pasal">16.3.4.1</span>.</li><li><b>Panjang penyaluran tekan</b> stek harus muat di dalam tebal telapak. Kait tidak dihitung efektif untuk tekan <span class="pasal">25.4.9</span>.</li><li>Arah kait stek tidak diatur khusus untuk KDS B. Model ini mengarahkannya ke luar.</li></ul>`,
-    SRPMK:`<h4>Detailing KDS D sampai F</h4><ul><li>Tulangan longitudinal kolom harus disalurkan penuh dalam tarik ke dalam fondasi <span class="pasal">18.13.2.1</span>.</li><li><b>Kait stek</b> dibengkokkan 90° di dekat dasar fondasi dengan ujung bebas mengarah ke pusat kolom <span class="pasal">18.13.2.3</span>. Arah ini membuat strut tekan di dalam telapak bisa bertumpu pada kait.</li><li>Bila tepi kolom berada dalam jarak setengah tebal telapak dari tepi fondasi, sengkang kolom harus diteruskan ke dalam fondasi <span class="pasal">18.13.2.4</span>.</li><li>Syarat selimut, tebal minimum, dan luas stek sama dengan sistem biasa.</li></ul>`
+    SRPMK:`<h4>Detailing KDS D sampai F</h4><ul><li>Tulangan longitudinal kolom harus disalurkan penuh dalam tarik ke dalam fondasi <span class="pasal">18.13.2.1</span>.</li><li><b>Kait stek</b> kolom yang dianggap terjepit di fondasi dibengkokkan 90° di dekat dasar fondasi dengan ujung bebas mengarah ke pusat kolom <span class="pasal">18.13.2.2</span>. Arah ini membuat strut tekan di dalam telapak bisa bertumpu pada kait.</li><li>Bila tepi kolom berada dalam jarak setengah tebal telapak dari tepi fondasi, tulangan transversal kolom sesuai 18.7.5.2 sampai 18.7.5.4 harus diteruskan ke dalam fondasi <span class="pasal">18.13.2.3</span>.</li><li>Bila gempa menimbulkan gaya angkat pada kolom, anyaman atas wajib dipasang dan tidak boleh kurang dari tulangan minimum pelat atau balok <span class="pasal">18.13.2.4</span>.</li><li>Syarat selimut, tebal minimum, dan luas stek sama dengan sistem biasa.</li></ul>`
   },
   build(p,sys){
     const K=sys==='SRPMK';
@@ -38,13 +38,13 @@ export default {
     // stek kolom
     const cg=rectCage({B:bc,H:bc,cover:40,ds:dsc,db:dbc,nu:nc,nv:nc,hook:K?135:90,allSup:K});
     const yHook=cover+2*dbm+dbc/2, yTop=hf+900, rh=4*dbc, th=12*dbc;
-    const iD={t:`Stek kolom ${cg.pos.length}D${dbc}`,b:[`Kait 90° di dasar telapak, ekor ${fmt(th)} mm ${K?'mengarah ke pusat kolom':'mengarah ke luar'}. Bagian lurus vertikal di dalam telapak harus memenuhi panjang penyaluran tekan ℓdc.`],pasal:K?'Pasal 18.13.2.3':'Pasal 16.3.4, 25.4.9'};
+    const iD={t:`Stek kolom ${cg.pos.length}D${dbc}`,b:[`Kait 90° di dasar telapak, ekor ${fmt(th)} mm ${K?'mengarah ke pusat kolom':'mengarah ke luar'}. Bagian lurus vertikal di dalam telapak harus memenuhi panjang penyaluran tekan ℓdc.`],pasal:K?'Pasal 18.13.2.2':'Pasal 16.3.4, 25.4.9'};
     cg.pos.forEach(([x,z])=>{
       let dir=Math.abs(x)>=Math.abs(z)?[Math.sign(x)||1,0]:[0,Math.sign(z)||1]; if(K) dir=[-dir[0],-dir[1]];
       const t=turtle(0,yTop,-Math.PI/2); t.fwd(yTop-yHook-rh).turn(90,rh).fwd(th);
       bars.push({pts:t.pts.map(([s,y])=>[x+dir[0]*s,y,z+dir[1]*s]),d:dbc,layer:'stek',color:COL.dowel,info:iD});
     });
-    const iH={t:`Sengkang kolom D${dsc}`,b:['Sengkang di dalam telapak memegang posisi stek saat pengecoran. Di atas telapak, sengkang mengikuti detailing kolom.'],pasal:K?'Pasal 18.13.2.4':'praktik'};
+    const iH={t:`Sengkang kolom D${dsc}`,b:['Sengkang di dalam telapak memegang posisi stek saat pengecoran. Di atas telapak, sengkang mengikuti detailing kolom.'],pasal:K?'Pasal 18.13.2.3':'praktik'};
     const hy=[]; for(let y=hf-75;y>yHook+rh+60;y-=150) hy.push(y); for(let y=hf+50;y<yTop-50;y+=K?100:150) hy.push(y);
     hy.forEach(y=>{ bars.push({pts:lift3D(cg.hoop,(u,v,w)=>[u,y+w,v],dsc*1.05),d:dsc,layer:'sengkang',color:y<hf?COL.mid:(K?COL.conf:COL.mid),info:iH}); cg.ties.forEach(t=>bars.push({pts:t.pts.map(([u,v])=>[u,y+dsc*1.1,v]),d:dsc,layer:'sengkang',color:COL.tie,info:iH})); });
     const concrete=[{box:[-B/2,B/2,0,hf,-B/2,B/2]},{box:[-bc/2,bc/2,hf,yTop,-bc/2,bc/2]},{box:[-B/2-100,B/2+100,-50,0,-B/2-100,B/2+100],kind:'stub'}];
@@ -63,9 +63,10 @@ export default {
     add(lc<=avail,'Panjang penyaluran tekan stek',`ℓdc = ${fmt(lc)} mm ≤ tersedia ${fmt(avail)} mm`,'Pasal 25.4.9.2');
     if(K){
       add(lh<=avail,'Penyaluran tarik stek dengan kait',`ℓdh = ${fmt(lh)} mm ≤ tersedia ${fmt(avail)} mm`,'Pasal 18.13.2.1, 25.4.3');
-      add(true,'Arah kait stek','ekor kait mengarah ke pusat kolom','Pasal 18.13.2.3');
+      add(true,'Arah kait stek','ekor kait mengarah ke pusat kolom','Pasal 18.13.2.2');
       const edge=(B-bc)/2;
-      add(null,'Jarak tepi kolom ke tepi telapak',`${fmt(edge)} mm ${edge<hf/2?'< hf/2, sengkang kolom wajib diteruskan ke dalam telapak':'≥ hf/2'}`,'Pasal 18.13.2.4');
+      add(null,'Jarak tepi kolom ke tepi telapak',`${fmt(edge)} mm ${edge<=hf/2?'≤ hf/2, tulangan transversal kolom sesuai 18.7.5.2 sampai 18.7.5.4 wajib diteruskan ke dalam telapak':'> hf/2'}`,'Pasal 18.13.2.3');
+      add(p.topMat?true:null,'Anyaman atas bila ada gaya angkat',p.topMat?'anyaman atas dipasang':'tidak dipasang. Wajib bila gempa menimbulkan gaya angkat pada kolom','Pasal 18.13.2.4');
     }
     add(null,'Ukuran dan tebal telapak','ditentukan dari daya dukung tanah, geser pons, dan geser satu arah. Tidak dihitung di sini','Pasal 13.2, 22.6');
     const views=[

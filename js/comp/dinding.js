@@ -6,7 +6,7 @@ export default {
   sysText:{SRPMB:'Dinding struktural biasa, padanan untuk bangunan dengan risiko gempa rendah. Mengikuti Pasal 11.',SRPMK:'Dinding struktural khusus, wajib sebagai penahan gempa di KDS D sampai F. Mengikuti Pasal 18.10.'},
   defaults:{
     SRPMB:{lw:3000,tw:200,hu:3500,ts:150,curt:1,dbv:10,sv:250,dbh:10,sh:150,be:false,lbe:500,nbe:3,dbe:16,dse:10,sbe:150,fc:25,fy:420,cover:20},
-    SRPMK:{lw:3000,tw:300,hu:3500,ts:150,curt:2,dbv:13,sv:200,dbh:13,sh:200,be:true,lbe:600,nbe:3,dbe:19,dse:13,sbe:100,fc:30,fy:420,cover:25}
+    SRPMK:{lw:3000,tw:300,hu:3500,ts:150,curt:2,dbv:13,sv:200,dbh:13,sh:200,be:true,lbe:600,nbe:4,dbe:19,dse:13,sbe:100,fc:30,fy:420,cover:25}
   },
   schema:[
     ['Geometri',[{k:'lw',label:'Panjang dinding ℓw',unit:'mm',min:1500,max:8000,step:100},{k:'tw',label:'Tebal dinding',unit:'mm',min:150,max:500,step:25},{k:'hu',label:'Tinggi bersih satu lantai',unit:'mm',min:2500,max:5000,step:100},{k:'ts',label:'Tebal pelat lantai',unit:'mm',min:100,max:250,step:10}]],
@@ -16,8 +16,8 @@ export default {
   ],
   teori:{
     common:`<h3>Dinding geser (dinding struktural)</h3><p>Dinding geser adalah dinding beton bertulang yang menahan gaya lateral gempa atau angin. Dinding ini sangat kaku di arah panjangnya, sehingga menarik sebagian besar gaya gempa dan membatasi simpangan antar lantai.</p><ul><li><b>Tulangan badan</b> vertikal dan horizontal tersebar merata. Tulangan horizontal terutama menahan geser, tulangan vertikal menahan lentur dan geser.</li><li><b>Dua lapis tulangan</b> dipakai untuk dinding tebal atau dinding yang menerima geser besar, supaya retak terkendali di kedua muka.</li><li><b>Elemen batas</b> adalah bagian ujung dinding yang diberi tulangan vertikal besar dan sengkang rapat seperti kolom. Saat dinding melentur akibat gempa, ujung dinding menerima tekan sangat besar, sehingga betonnya perlu dikekang.</li></ul>`,
-    SRPMB:`<h4>Dinding struktural biasa</h4><ul><li><b>Rasio minimum</b> vertikal 0,0012 dan horizontal 0,0020 untuk tulangan D16 ke bawah dengan fy ≥ 420 MPa. Untuk tulangan lebih besar, 0,0015 dan 0,0025 <span class="pasal">11.6.1</span>.</li><li><b>Spasi maksimum</b> 3 kali tebal dinding dan 450 mm <span class="pasal">11.7.2.1, 11.7.3.1</span>.</li><li><b>Dua lapis</b> wajib bila tebal dinding lebih dari 250 mm <span class="pasal">11.7.2.3</span>.</li><li><b>Selimut</b> 20 mm untuk dinding yang tidak terekspos cuaca <span class="pasal">Tabel 20.6.1.3.1</span>.</li></ul><div class="box">Ubah ke dinding khusus dan perhatikan elemen batas di kedua ujung, kenaikan rasio minimum, dan tulangan horizontal yang dikaitkan ke dalam inti elemen batas.</div>`,
-    SRPMK:`<h4>Dinding struktural khusus</h4><ul><li><b>Rasio minimum</b> vertikal dan horizontal 0,0025 dengan spasi maksimum 450 mm <span class="pasal">18.10.2.1</span>.</li><li><b>Dua lapis</b> wajib bila hw/ℓw ≥ 2 atau geser terfaktor melebihi 0,17 Acv √fc' <span class="pasal">18.10.2.2</span>.</li><li><b>Kebutuhan elemen batas</b> diperiksa dengan pendekatan perpindahan atau tegangan <span class="pasal">18.10.6.2, 18.10.6.3</span>. Keduanya butuh hasil analisis, sehingga di sini elemen batas dipasang sebagai pilihan.</li><li><b>Detail elemen batas</b>: lebar minimal hu/16 <span class="pasal">18.10.6.4(b)</span>, spasi sengkang tidak lebih dari 1/3 dimensi terkecil, 6db, dan so <span class="pasal">18.10.6.4(e)</span>, luas sengkang menurut Tabel 18.10.6.4(f).</li><li><b>Tulangan horizontal badan</b> diangkur ke dalam inti elemen batas, misalnya dengan kait mengelilingi tulangan vertikal ujung <span class="pasal">18.10.6.4</span>.</li></ul>`
+    SRPMB:`<h4>Dinding struktural biasa</h4><ul><li><b>Rasio minimum</b> vertikal 0,0012 dan horizontal 0,0020 untuk tulangan D16 ke bawah dengan fy ≥ 420 MPa. Untuk tulangan lebih besar atau fy < 420 MPa, 0,0015 dan 0,0025. Nilai ini berlaku bila Vu ≤ 0,5Vc; di atas itu dipakai 11.6.2 <span class="pasal">Tabel 11.6.1</span>.</li><li><b>Spasi maksimum</b> 3 kali tebal dinding dan 450 mm <span class="pasal">11.7.2.1, 11.7.3.1</span>.</li><li><b>Dua lapis</b> wajib bila tebal dinding lebih dari 250 mm <span class="pasal">11.7.2.3</span>.</li><li><b>Selimut</b> 20 mm untuk dinding yang tidak terekspos cuaca <span class="pasal">Tabel 20.6.1.3.1</span>.</li></ul><div class="box">Ubah ke dinding khusus dan perhatikan elemen batas di kedua ujung, kenaikan rasio minimum, dan tulangan horizontal yang dikaitkan ke dalam inti elemen batas.</div>`,
+    SRPMK:`<h4>Dinding struktural khusus</h4><ul><li><b>Rasio minimum</b> vertikal dan horizontal 0,0025 dengan spasi maksimum 450 mm. Bila Vu ≤ 0,083 Acv √fc', rasio boleh diturunkan sesuai Pasal 11.6 <span class="pasal">18.10.2.1</span>.</li><li><b>Dua lapis</b> wajib bila hw/ℓw ≥ 2 atau geser terfaktor melebihi 0,17 Acv √fc' <span class="pasal">18.10.2.2</span>.</li><li><b>Kebutuhan elemen batas</b> diperiksa dengan pendekatan perpindahan atau tegangan <span class="pasal">18.10.6.2, 18.10.6.3</span>. Keduanya butuh hasil analisis, sehingga di sini elemen batas dipasang sebagai pilihan.</li><li><b>Detail elemen batas</b>: lebar minimal hu/16 <span class="pasal">18.10.6.4(b)</span>, dan minimal 300 mm untuk dinding menerus dengan hw/ℓw ≥ 2 dan c/ℓw ≥ 3/8 <span class="pasal">18.10.6.4(c)</span>. Spasi sengkang tidak lebih dari 1/3 dimensi terkecil elemen batas, 6db, dan so, sedangkan hx tidak lebih dari 350 mm dan 2/3 tebal elemen batas <span class="pasal">18.10.6.4(e)</span>. Luas sengkang menurut <span class="pasal">Tabel 18.10.6.4(f)</span>.</li><li><b>Sengkang elemen batas di dasar dinding</b> diteruskan ke dalam fondasi minimal 300 mm <span class="pasal">18.10.6.4(g)</span>.</li><li><b>Tulangan horizontal badan</b> diteruskan sampai 150 mm dari ujung dinding dan diangkur ke dalam inti elemen batas dengan kait standar atau kepala <span class="pasal">18.10.6.4(h)</span>.</li></ul>`
   },
   build(p,sys){
     const K=sys==='SRPMK';
@@ -32,7 +32,7 @@ export default {
     const zVs=curt===2?[-zV,zV]:[0];
     vx.forEach(x=>zVs.forEach(z=>bars.push({pts:[[x,yB,z],[x,yT,z]],d:dbv,layer:'vert',color:COL.long,info:iV})));
     const xe=be?lw/2-cover-dse-dbe/2:lw/2-cover-dbh/2, r=3*dbh, tail=curt===2?Math.min(12*dbh,2*zH-2*r-dbh):0;
-    const iH={t:`Tulangan horizontal badan D${dbh}-${sh}`,b:['Menahan geser dinding.',curt===2?(be?'Ujungnya dikaitkan ke dalam inti elemen batas.':'Ujung dibengkokkan ke arah lapis seberang.'):'Satu lapis di tengah tebal dinding.'],pasal:K?'Pasal 18.10.2.1, 18.10.6.4':'Pasal 11.6.1'};
+    const iH={t:`Tulangan horizontal badan D${dbh}-${sh}`,b:['Menahan geser dinding.',curt===2?(be?'Ujungnya dikaitkan ke dalam inti elemen batas.':'Ujung dibengkokkan ke arah lapis seberang.'):'Satu lapis di tengah tebal dinding.'],pasal:K?'Pasal 18.10.2.1, 18.10.6.4(h)':'Pasal 11.6.1'};
     const hys=spread(60,hu-60,sh);
     hys.forEach(y=>{
       if(curt===2){ [1,-1].forEach(sg=>{ const t=turtle(-xe,sg*(zH-r-tail),sg>0?Math.PI/2:-Math.PI/2); t.fwd(tail).turn(sg>0?-90:90,r).fwd(2*xe-2*r).turn(sg>0?-90:90,r).fwd(tail); bars.push({pts:t.pts.map(([x,z])=>[x,y,z]),d:dbh,layer:'horz',color:COL.webH,info:iH}); }); }
@@ -44,8 +44,10 @@ export default {
     // elemen batas
     let cg=null;
     if(be){
-      cg=rectCage({B:lbe,H:tw,cover,ds:dse,db:dbe,nu:nbe,nv:2,hook:135,allSup:true});
-      const iB={t:`Tulangan elemen batas ${cg.pos.length}D${dbe}`,b:['Menahan tekan dan tarik besar di ujung dinding saat dinding melentur akibat gempa.'],pasal:'Pasal 18.10.6'};
+      // 18.10.6.4(e): hx ≤ min(350; 2/3 tebal). Bila jarak tulangan arah tebal melebihi batas, tambahkan baris tengah.
+      const nv=(tw-2*(cover+dse)-dbe)>Math.min(350,2*tw/3)?3:2;
+      cg=rectCage({B:lbe,H:tw,cover,ds:dse,db:dbe,nu:nbe,nv,hook:135,allSup:true});
+      const iB={t:`Tulangan elemen batas ${cg.pos.length}D${dbe}`,b:['Menahan tekan dan tarik besar di ujung dinding saat dinding melentur akibat gempa.',nv===3?'Baris tengah arah tebal ditambahkan agar hx tidak melebihi 2/3 tebal elemen batas.':''],pasal:'Pasal 18.10.6'};
       const iS={t:`Sengkang elemen batas D${dse}-${sbe}`,b:['Mengekang beton di ujung dinding seperti sengkang kolom SRPMK.'],pasal:'Pasal 18.10.6.4'};
       const iT={t:`Kait silang elemen batas D${dse}`,b:['Menumpu tulangan tengah elemen batas.'],pasal:'Pasal 18.10.6.4'};
       [-1,1].forEach(sg=>{ const xc=sg*(lw/2-lbe/2);
@@ -67,14 +69,16 @@ export default {
       add(curt===2?true:null,'Jumlah lapis tulangan',curt===2?'dua lapis':'satu lapis. Dua lapis wajib bila hw/ℓw ≥ 2 atau Vu > 0,17 Acv √fc\'','Pasal 18.10.2.2');
       if(be){
         add(tw>=hu/16,'Lebar elemen batas',`${tw} mm ≥ hu/16 = ${fmt(hu/16)} mm`,'Pasal 18.10.6.4(b)');
-        add(cg.hx<=350,'Jarak hx tulangan elemen batas',`${fmt(cg.hx)} mm ≤ 350 mm`,'Pasal 18.10.6.4');
-        const so=Math.min(150,Math.max(100,100+(350-cg.hx)/3)), sm=Math.min(tw/3,6*dbe,so);
-        add(sbe<=sm+0.5,'Spasi sengkang elemen batas',`${sbe} mm ≤ min(b/3; 6db; so) = ${fmt(sm)} mm`,'Pasal 18.10.6.4(e)');
+        const hxMax=Math.min(350,2*tw/3);
+        add(cg.hx<=hxMax,'Jarak hx tulangan elemen batas',`${fmt(cg.hx)} mm ≤ min(350; 2/3 tebal) = ${fmt(hxMax)} mm`,'Pasal 18.10.6.4(e)');
+        const bmin=Math.min(tw,lbe), so=Math.min(150,Math.max(100,100+(350-cg.hx)/3)), sm=Math.min(bmin/3,6*dbe,so);
+        add(sbe<=sm+0.5,'Spasi sengkang elemen batas',`${sbe} mm ≤ min(dimensi terkecil/3; 6db; so) = ${fmt(sm)} mm`,'Pasal 18.10.6.4(e)');
         const bcx=lbe-2*cover, bcz=tw-2*cover, Ag=lbe*tw, Ach=bcx*bcz;
-        const rX=ashReq(sbe,bcx,fc,fy,Ag,Ach), rZ=ashReq(sbe,bcz,fc,fy,Ag,Ach), pX=(2+cg.nTieV)*AREA[dse], pZ=2*AREA[dse];
-        add(pX>=rX&&pZ>=rZ,'Luas sengkang elemen batas Ash',`arah ℓw: ${2+cg.nTieV} kaki = ${fmt(pX)} ≥ ${fmt(rX)} mm²; arah tebal: 2 kaki = ${fmt(pZ)} ≥ ${fmt(rZ)} mm²`,'Tabel 18.10.6.4(f)');
+        const rX=ashReq(sbe,bcx,fc,fy,Ag,Ach), rZ=ashReq(sbe,bcz,fc,fy,Ag,Ach), pX=(2+cg.nTieV)*AREA[dse], pZ=(2+cg.nTieU)*AREA[dse];
+        add(pX>=rX&&pZ>=rZ,'Luas sengkang elemen batas Ash',`arah ℓw: ${2+cg.nTieV} kaki = ${fmt(pX)} ≥ ${fmt(rX)} mm²; arah tebal: ${2+cg.nTieU} kaki = ${fmt(pZ)} ≥ ${fmt(rZ)} mm²`,'Tabel 18.10.6.4(f)');
         add(null,'Panjang elemen batas',`${fmt(lbe)} mm. Syaratnya maks(c − 0,1ℓw; c/2) dengan c dari analisis penampang`,'Pasal 18.10.6.4(a)');
-        add(true,'Angkur tulangan horizontal','dikaitkan di dalam inti elemen batas','Pasal 18.10.6.4');
+        add(null,'Lebar elemen batas 300 mm',`${tw} mm. Minimal 300 mm bila hw/ℓw ≥ 2 dan c/ℓw ≥ 3/8, keduanya butuh data dinding utuh`,'Pasal 18.10.6.4(c)');
+        add(true,'Angkur tulangan horizontal',`dikaitkan di dalam inti elemen batas, ujungnya ${fmt(cover+dse+dbe/2)} mm ≤ 150 mm dari ujung dinding`,'Pasal 18.10.6.4(h)');
       } else add(null,'Kebutuhan elemen batas','tidak dipasang. Periksa kebutuhannya dengan Pasal 18.10.6.2 atau 18.10.6.3','Pasal 18.10.6.2');
     } else {
       const rlm=(dbv<=16&&fy>=420)?0.0012:0.0015, rtm=(dbh<=16&&fy>=420)?0.0020:0.0025, sm=Math.min(3*tw,450);

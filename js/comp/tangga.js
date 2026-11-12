@@ -48,7 +48,7 @@ export default {
     spread(xk2+60,xF-40,sd).forEach(x=>{ bars.push({pts:[[x,yLB+dd,20],[x,yLB+dd,wd-20]],d:dbd,layer:'bagi',color:COL.dist,info:iD}); bars.push({pts:[[x,yLT-dd,20],[x,yLT-dd,wd-20]],d:dbd,layer:'bagi',color:COL.dist,info:iD}); });
     const labels=[{p:[xk2,H-t-60,wd],t:'sudut dalam bawah',c:'lap'},{p:[0,60,wd],t:'sudut dalam atas',c:'lap'},{p:[Lr+Lb/2,H+80,wd/2],t:`bordes ${fmt(Lb)} mm`},{p:[Lr/2,H/2+250,wd/2],t:`${n} × ${fmt(R,1)} / ${fmt(T)} mm`}];
     // pemeriksaan
-    const L=xF, kf={s:20,'1':24,'2':28}[p.tump], fyF=fy===420?1:(0.4+fy/700), hmin=L/kf*fyF;
+    const L=xF, kf={s:20,'1':24,'2':28}[p.tump], fyF=fy>420?(0.4+fy/700):1, hmin=L/kf*fyF;
     const Asm=asPerM(dbm,sm), Asd=asPerM(dbd,sd), Amin=(fy>=420?0.0018:0.0020)*1000*t;
     const {C,add}=checker();
     add(cover>=20,'Selimut beton',`${cover} mm ≥ 20 mm`,'Tabel 20.6.1.3.1');
