@@ -1,7 +1,7 @@
 import {AREA,DIAS,COL,fmt,up50,devLen,fill,checker,rectCage,lift3D,ashReq,DAGG} from '../core.js';
 
 export default {
-  id:'kolom', name:'Kolom', sysDependent:true,
+  id:'kolom', name:'Kolom struktur', sysDependent:true,
   defaults:{
     SRPMB:{bx:400,by:400,H:3500,hb:500,nx:3,ny:3,db:16,ds:10,sLo:150,sMid:200,fc:30,fy:420,cover:40,lap:true},
     SRPMK:{bx:500,by:500,H:3500,hb:500,nx:4,ny:4,db:19,ds:13,sLo:100,sMid:110,fc:30,fy:420,cover:40,lap:true}

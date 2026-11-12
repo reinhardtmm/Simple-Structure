@@ -1,6 +1,6 @@
 # Atlas Tulangan
 
-Web app edukasi untuk melihat detailing tulangan komponen struktur beton bertulang dalam 3D, lengkap dengan gambar 2D, pemeriksaan syarat SNI 2847:2019, dan penjelasan. Pemilik proyek: mahasiswa Teknik Sipil UGM.
+Web app edukasi untuk melihat detailing tulangan komponen struktur beton bertulang dan elemen praktis bangunan sederhana (pasangan bata, kolom praktis, sloof praktis, fondasi batu kali) dalam 3D, lengkap dengan gambar 2D, pemeriksaan syarat SNI 2847:2019, dan penjelasan. Pemilik proyek: mahasiswa Teknik Sipil UGM.
 
 ## Menjalankan
 
@@ -16,11 +16,12 @@ Lalu buka http://localhost:8765. Three.js r160 dimuat dari CDN jsdelivr lewat im
 
 ## Struktur
 
-- `index.html`: tata letak, CSS, dan importmap. Tidak ada build step.
-- `js/app.js`: scene Three.js, kamera, pemotongan (clipping), urai (explode), toggle lapisan, raycast klik, dan semua panel UI. Daftar komponen dan pengelompokan navigasi ada di konstanta `GROUPS`.
+- `index.html`: tata letak, CSS, dan importmap. Tidak ada build step. Gaya mengikuti Apple Human Interface Guidelines: font sistem (SF Pro di perangkat Apple, Inter dari Google Fonts sebagai cadangan), warna sistem HIG sebagai token di `:root`, segmented control, daftar bergrup, dan switch. Jangan kembali ke IBM Plex; pemilik proyek tidak ingin tampilan yang mirip antarmuka Claude. Hanya mode terang.
+- `js/app.js`: scene Three.js, kamera, pemotongan (clipping), urai (explode), toggle lapisan, raycast klik, dan semua panel UI. Daftar komponen dan pengelompokan navigasi ada di konstanta `GROUPS`, diurutkan menurut urutan pelaksanaan (1 Fondasi, 2 Sloof, 3 Kolom dan dinding geser, 4 Balok dan pelat, 5 Tangga, 6 Pasangan dinding) ditambah kelompok Hubungan tanpa nomor. Pemilik proyek berencana membuat mode gabungan yang menyambungkan beberapa komponen sekaligus; hbk sengaja diletakkan sendiri di kelompok Hubungan.
 - `js/core.js`: utilitas bersama.
   - Rumus: `devLen` (ℓd Tabel 25.4.2.2, bentuk sederhana), `ldhGen` (25.4.3.1), `ldhSeis` (18.8.5.1), `ldc` (25.4.9.2), `ashReq` (18.7.5.4).
   - Geometri: `turtle` (pembuat polyline 2D dengan lengkung), `hoop2D` (sengkang tertutup dengan kait 90 atau 135), `crosstie2D`, `rectCage` (susunan tulangan, sengkang, kait silang, dan hx untuk penampang persegi), `lift3D` (helix kecil supaya dua kait sengkang tidak saling tembus).
+  - Pasangan: `BATA` (ukuran nominal SNI 15-2094-2000 dan bata ringan), `MAT` (warna material non-beton), `SPESI` (campuran dan penggunaannya), `bataWall` (menyusun bata per lapis dengan ikatan ½ atau 1 bata, gigi ke kolom, dan menghitung bata serta spesi per m²), `bentBar` (tulangan dengan bengkokan 90° di kedua ujung), `trapesium`, serta teks rujukan `PU`, `REF_PRAKTIS`, `NOTE_PRAKTIS`.
   - `renderView`: mesin gambar 2D generik. Memproyeksikan atau memotong model 3D yang sama menjadi SVG, jadi gambar selalu sinkron dengan parameter.
 - `js/comp/*.js`: satu file per komponen.
 - `tools/screenshot_all.py`: uji visual dengan Playwright dan Chrome headless. Membuka setiap komponen di kedua sistem rangka, mencatat pemeriksaan yang gagal, error JavaScript, dan menyimpan screenshot.
@@ -33,6 +34,7 @@ Setiap file di `js/comp/` mengekspor objek:
 {
   id, name, sysDependent,           // sysDependent false: pelat, tangga (params disimpan di kunci 'ALL')
   sysName?, sysText?,               // opsional, label sistem khusus (dipakai dinding: biasa vs khusus)
+  std?, ref?, checkNote?,           // opsional untuk elemen non-SNI 2847: label standar di header, teks rujukan di tab Penjelasan, catatan di tab Cek
   defaults: { SRPMB:{...}, SRPMK:{...} } atau { ALL:{...} },
   schema: [[judulGrup, [field...]]],  // field: {k,label,unit,min,max,step} | {k,label,opts} | {k,label,type:'bool'}; label dan show boleh fungsi (sys, params)
   teori: { common, SRPMB, SRPMK } atau { common, ALL },  // HTML
@@ -42,14 +44,14 @@ Setiap file di `js/comp/` mengekspor objek:
 
 `model` berisi:
 
-- `layers`: `[{k, label, color, ex:[dx,dy,dz]}]`. `ex` adalah perpindahan dalam mm saat slider urai penuh.
+- `layers`: `[{k, label, color, ex:[dx,dy,dz], block?, off?}]`. `ex` adalah perpindahan dalam mm saat slider urai penuh. `block:true` untuk lapisan material (bata, spesi, batu) yang ikut disembunyikan oleh tombol Tulangan saja. `off:true` membuat lapisan mati secara bawaan.
 - `betonEx`: perpindahan beton saat diurai.
-- `concrete`: `[{box:[x0,x1,y0,y1,z0,z1], kind?:'stub'}]`, `{cyl:{x,z,r,y0,y1}}`, atau `{prism:{pts:[[x,y]...], z0, z1}}`.
+- `concrete`: `[{box:[x0,x1,y0,y1,z0,z1], kind?:'stub'}]`, `{boxes:[[...],...]}` (banyak kotak digabung jadi satu geometri, misalnya bata), `{cyl:{x,z,r,y0,y1}}`, `{prism:{pts:[[x,y]...], z0, z1}}`, atau `{prism:{axis:'x', pts:[[z,y]...], x0, x1}}`. Setiap item boleh punya `mat` (kunci `MAT`, mis. 'bata', 'spesi', 'batu') dan `layer` (grup toggle sendiri; tanpa `layer` masuk grup 'beton'). Di gambar 2D, item yang didaftarkan lebih dulu tergambar di bawah, jadi spesi harus sebelum bata.
 - `zones`: kotak transparan berwarna untuk daerah khusus seperti 2h, ℓo, dan lewatan.
 - `bars`: `[{pts:[[x,y,z]...], d, layer, color, info:{t, b:[...], pasal}, maxSeg?}]`.
 - `labels`: `[{p:[x,y,z], t, c?:'conf'|'lap'|'mid'}]`.
-- `views`: spesifikasi gambar untuk `renderView`: `{title, sub?, n:'x'|'y'|'z', at?, half?, u, v, layers?, dims?, notes?, skipStub?, w2?, maxH?}`. Tanpa `half` berarti proyeksi penuh. Dengan `half` berarti potongan setebal 2·half di koordinat `at`.
-- `checks`: `[{ok:true|false|null, t, d, p}]`. `null` adalah info. `p` adalah nomor pasal, `'praktik'`, atau string yang diawali `SNI`.
+- `views`: spesifikasi gambar untuk `renderView`: `{title, sub?, n:'x'|'y'|'z', at?, half?, u, v, layers?, dims?, notes?, skipStub?, skipMat?:[...], w2?, maxH?}`. Tanpa `half` berarti proyeksi penuh. Dengan `half` berarti potongan setebal 2·half di koordinat `at`.
+- `checks`: `[{ok:true|false|null, t, d, p}]`. `null` adalah info. `p` yang diawali `Pasal` atau `Tabel` otomatis diberi awalan SNI 2847:2019; `'praktik'` ditampilkan sebagai praktik umum; selain itu ditulis apa adanya (mis. 'SNI 15-2094-2000' atau konstanta `PU`).
 - `derived`: HTML nilai turunan. `camDir`, `camK`: arah dan jarak kamera. `cutAxis`: sumbu slider potong. `colorNote` opsional.
 
 ## Konvensi
@@ -74,7 +76,16 @@ SNI 2847:2019 adalah adopsi modifikasi (MOD) dari ACI 318M-14. Beberapa bagian s
 
 Batas yang belum dimodelkan karena butuh gaya dalam: baris (c) Tabel 18.7.5.4 untuk Pu > 0,3Ag fc', syarat 11.6.2 untuk dinding dengan Vu > 0,5Vc, dan pengecualian rasio dinding khusus bila Vu ≤ 0,083Acv√fc'.
 
-Batas yang ditandai `praktik` memang bukan pasal SNI: zona ℓn/4 balok SRPMB, jarak tiang 2,5D, kepala tiang 75 sampai 150 mm, 2R + T, dan panjang tulangan tumpuan pelat ℓx/4.
+## Rujukan elemen praktis (belum diverifikasi)
+
+Komponen `batukali`, `sloofpraktis`, `kolompraktis`, dan `bata` tidak diatur SNI 2847:2019. Batasnya diambil dari sumber berikut dan belum dicocokkan dengan dokumen resminya:
+
+- Persyaratan teknis bangunan gedung sederhana tahan gempa dari Kementerian PU, dibaca dari lampiran Perbup Fakfak tentang penyelenggaraan bangunan gedung: dinding maks 9 m² dan jarak kolom maks 3 m; spesi dan plester 1:4, plester 2 cm; angkur dinding Ø10 panjang ≥ 40 cm tiap 6 lapis; angkur fondasi ke sloof Ø10 jarak ≤ 1 m; tulangan kolom ke sloof dan ring ≥ 40d atau 40 cm; begel 135° ≥ 5 cm.
+- Ringkasan sekunder buku saku PU: kolom 15×15 cm 4Ø10 begel Ø8-150 selimut 1,5 cm; sloof min 15×20 cm; fondasi batu kali dalam 60 cm, lebar atas 30 cm, bawah 60 cm. Ring balok 12×15 cm dari artikel, sehingga ditandai `praktik`.
+- SNI 15-2094-2000 untuk ukuran bata merah pejal (dikonfirmasi beberapa jurnal; satu sumber menulis lebar M-5a 92 mm).
+- SNI 6882:2014 untuk tipe mortar M, S, N, O (17,2; 12,4; 5,2; 2,4 MPa) dari ringkasan sekunder; proporsi volumenya belum ditemukan.
+
+Batas yang ditandai `praktik` memang bukan pasal SNI: zona ℓn/4 balok SRPMB, jarak tiang 2,5D, kepala tiang 75 sampai 150 mm, 2R + T, dan panjang tulangan tumpuan pelat ℓx/4. Juga tebal spesi 8 sampai 15 mm (bata ringan 2 sampai 5 mm), aanstamping 100 sampai 200 mm, kemiringan fondasi batu kali ≥ 60°, dan ukuran ring balok.
 
 ## Ide lanjutan
 

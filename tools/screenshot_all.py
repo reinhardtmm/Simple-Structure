@@ -3,7 +3,7 @@ os.makedirs('tools/shots', exist_ok=True)
 # Jalankan dari folder proyek: python tools/screenshot_all.py [komponen,komponen]
 # Perlu: pip install playwright && playwright install chromium, serta server lokal di port 8765
 from playwright.async_api import async_playwright
-comps = sys.argv[1].split(',') if len(sys.argv)>1 else ['pelat','balok','kolom','hbk','dinding','tangga','sloof','telapak','tiang']
+comps = sys.argv[1].split(',') if len(sys.argv)>1 else ['batukali','telapak','tiang','sloofpraktis','sloof','kolom','dinding','balok','pelat','tangga','bata','kolompraktis','hbk']
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch(args=['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader'])

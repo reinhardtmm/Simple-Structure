@@ -1,7 +1,7 @@
 import {AREA,COL,fmt,linspace,turtle,hoop2D,lift3D,spread,ldhGen,checker,DAGG} from '../core.js';
 
 export default {
-  id:'sloof', name:'Sloof (tie beam)', sysDependent:true,
+  id:'sloof', name:'Sloof struktur (tie beam)', sysDependent:true,
   defaults:{
     SRPMB:{b:250,h:400,L:4000,cap:1200,capH:600,n:3,db:16,ds:10,s:150,fc:25,fy:420,cover:40},
     SRPMK:{b:300,h:400,L:4000,cap:1200,capH:700,n:3,db:16,ds:10,s:150,fc:30,fy:420,cover:40}

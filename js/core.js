@@ -89,9 +89,74 @@ export function ashReq(s,bc,fc,fyt,Ag,Ach){ return Math.max(0.3*s*bc*fc/fyt*(Ag/
 // pembuat daftar pemeriksaan
 export function checker(){ const C=[]; const add=(ok,t,d,p,opt={})=>C.push({ok,t,d,p,...opt}); return {C,add}; }
 
+/* ================= pasangan bata dan material non-beton ================= */
+// Ukuran nominal bata merah pejal SNI 15-2094-2000 (t = tebal/tinggi lapis, w = lebar, l = panjang, mm).
+// Bata ringan memakai ukuran pabrikan yang umum, bukan dari SNI tersebut.
+export const BATA={
+  'M-5a':{t:65,w:90,l:190,nama:'Bata merah M-5a (65 × 90 × 190)'},
+  'M-5b':{t:65,w:100,l:190,nama:'Bata merah M-5b (65 × 100 × 190)'},
+  'M-6a':{t:52,w:110,l:230,nama:'Bata merah M-6a (52 × 110 × 230)'},
+  'M-6b':{t:55,w:110,l:230,nama:'Bata merah M-6b (55 × 110 × 230)'},
+  'M-6c':{t:70,w:110,l:230,nama:'Bata merah M-6c (70 × 110 × 230)'},
+  'M-6d':{t:80,w:110,l:230,nama:'Bata merah M-6d (80 × 110 × 230)'},
+  'ringan':{t:200,w:100,l:600,ringan:true,nama:'Bata ringan (200 × 100 × 600)'}
+};
+export const BATA_OPTS=Object.entries(BATA).map(([k,v])=>[k,v.nama]);
+// Warna material; dipakai di 3D (app.js) dan gambar 2D (renderView)
+export const MAT={bata:'#c4603f',ringan:'#d9d6cf',spesi:'#d8d2c4',plester:'#e9e6df',batu:'#8d9097',aanstamping:'#a7a49c',pasir:'#e3d2a2'};
+// Campuran spesi yang lazim (volume semen : pasir) beserta penggunaannya
+export const SPESI={
+  '1:2':'kedap air (trasraam): dinding kamar mandi dan 30 cm di atas lantai',
+  '1:3':'kedap air ringan: dinding yang sering basah dan plester trasraam',
+  '1:4':'pasangan dinding dan plester umum, juga pasangan batu kali',
+  '1:5':'pasangan batu kali dan dinding nonstruktural',
+  '1:6':'pasangan nonstruktural ringan, tidak disarankan untuk dinding luar'
+};
+/* Susun bata satu bidang dinding.
+   axis: arah panjang dinding ('x' atau 'z'); a0..a1: batas bersih antar kolom; y0..y1: tinggi; c: sumbu tebal dinding;
+   bond 'half' = ½ bata (tebal = lebar bata), 'full' = 1 bata ikatan Inggris (tebal = panjang bata);
+   tooth0/tooth1: gigi ke dalam kolom pada lapis ganjil (0 = tanpa gigi). */
+export function bataWall({axis='x',a0,a1,y0,y1,c=0,bt,joint=10,bond='half',tooth0=0,tooth1=0}){
+  const full=bond==='full'&&!bt.ringan, T=full?bt.l:bt.w, ch=bt.t+joint, n=Math.max(1,Math.floor((y1-y0)/ch));
+  const raw=[]; let volIn=0;
+  const put=(p,q,yb,z0,z1)=>{ if(q-p<20) return; raw.push([p,q,yb,yb+bt.t,z0,z1]); const pi=Math.max(p,a0), qi=Math.min(q,a1); if(qi>pi) volIn+=(qi-pi)*bt.t*(z1-z0); };
+  const row=(k,len,z0,z1,off)=>{ const lo=a0-(k%2?tooth0:0), hi=a1+(k%2?tooth1:0), m=len+joint, yb=y0+joint+k*ch;
+    for(let p=a0-off-m*Math.ceil((off+tooth0)/m+1);p<hi;p+=m){ const s=Math.max(p,lo), e=Math.min(p+len,hi); if(e>s) put(s,e,yb,z0,z1); } };
+  for(let k=0;k<n;k++){
+    if(!full) row(k,bt.l,c-T/2,c+T/2,k%2?(bt.l+joint)/2:0);
+    else if(k%2===0){ row(k,bt.l,c-T/2,c-T/2+bt.w,0); row(k,bt.l,c+T/2-bt.w,c+T/2,(bt.l+joint)/2); }
+    else row(k,bt.w,c-T/2,c+T/2,(bt.w+joint)/2);
+  }
+  const top=y0+joint+n*ch;
+  const map=b=>axis==='x'?[b[0],b[1],b[2],b[3],b[4],b[5]]:[b[4],b[5],b[2],b[3],b[0],b[1]];
+  const mortar=map([a0,a1,y0,Math.min(top,y1),c-T/2+1,c+T/2-1]);
+  const area=(a1-a0)*(top-y0), vWall=area*T;
+  return {boxes:raw.map(map),mortar,thick:T,n,ch,top,courseY:k=>y0+joint+k*ch,
+    perM2:volIn/(bt.l*bt.w*bt.t)/(area/1e6), mortarPerM2:(vWall-volIn)/1e9/(area/1e6), nBata:volIn/(bt.l*bt.w*bt.t), vMortar:(vWall-volIn)/1e9};
+}
+/* Tulangan kolom praktis: batang lurus dengan bengkokan 90° sepanjang Lb ke dalam sloof (bawah) dan ring (atas).
+   dir = arah bengkokan pada sumbu u (+1/-1). Mengembalikan titik dalam bidang (u, y). */
+export function bentBar(u,yB,yT,dir,Lb,r){
+  const t=turtle(u+dir*Lb,yT,dir>0?PI:0), sg=dir>0?1:-1;
+  t.fwd(Lb-r).turn(90*sg,r).fwd(yT-yB-2*r).turn(90*sg,r).fwd(Lb-r);
+  return t.pts;
+}
+
+// Rujukan elemen praktis (bangunan sederhana). Label pemeriksaan 'Persyaratan PU' merujuk ke persyaratan teknis bangunan
+// gedung sederhana tahan gempa dari Kementerian PU, sebagaimana dikutip dalam lampiran peraturan daerah tentang bangunan gedung.
+export const PU='Persyaratan PU bangunan sederhana';
+export const REF_PRAKTIS='Rujukan: persyaratan teknis bangunan gedung sederhana tahan gempa dari Kementerian PU (dikutip dalam lampiran peraturan daerah tentang penyelenggaraan bangunan gedung), SNI 15-2094-2000 untuk ukuran bata merah pejal, SNI 6882:2014 untuk mortar, dan SNI 2847:2019 untuk selimut beton. Selain SNI 2847:2019, rujukan ini belum dicocokkan dengan dokumen resminya.';
+export const NOTE_PRAKTIS='Komponen ini adalah elemen praktis untuk bangunan sederhana. Batasnya diambil dari persyaratan PU untuk rumah tahan gempa dan praktik umum, bukan dari SNI 2847:2019, dan belum dicocokkan dengan dokumen resminya.';
+export const SPESI_TABEL=`<table><tr><th>Campuran (PC : pasir)</th><th>Penggunaan umum</th></tr>${Object.entries(SPESI).map(([k,v])=>`<tr><td>1 PC : ${k.split(':')[1]} Ps</td><td>${v}</td></tr>`).join('')}</table>`;
+export const BATA_TABEL=`<table><tr><th>Jenis</th><th>t × w × l (mm)</th></tr>${Object.entries(BATA).map(([k,b])=>`<tr><td>${b.ringan?'Bata ringan':'Bata merah '+k}</td><td>${b.t} × ${b.w} × ${b.l}</td></tr>`).join('')}</table>`;
+
+// titik penampang trapesium (fondasi batu kali): lebar atas a di yTop, lebar bawah B sedalam h, simetris terhadap c
+export const trapesium=(a,B,yTop,h,c=0)=>[[c-B/2,yTop-h],[c+B/2,yTop-h],[c+a/2,yTop],[c-a/2,yTop]];
+
 /* ================= mesin gambar 2D ================= */
 const IX={x:0,y:1,z:2};
-const SV={ink:'#1c1e21',ink2:'#4a4f57',conc:'#efece4',stub:'#e2ddd1'};
+const SV={ink:'#1c1c1e',ink2:'#636366',conc:'#ececf0',stub:'#e1e1e6'};
+const SVF='-apple-system, BlinkMacSystemFont, SF Pro Text, Inter, Segoe UI, sans-serif';
 export function renderView(m,v){
   const n=IX[v.n], iu=IX[v.u], iv=IX[v.v];
   const half=v.half??Infinity, cut=isFinite(half), at=v.at??0;
@@ -99,19 +164,27 @@ export function renderView(m,v){
   const els=[]; let x0=Infinity,x1=-Infinity,y0=Infinity,y1=-Infinity;
   const ext=(u,w)=>{x0=Math.min(x0,u);x1=Math.max(x1,u);y0=Math.min(y0,-w);y1=Math.max(y1,-w);};
   // beton
-  const fillOf=c=>c.kind==='stub'?SV.stub:SV.conc;
+  const fillOf=c=>c.mat?(MAT[c.mat]||c.mat):(c.kind==='stub'?SV.stub:SV.conc);
+  const rect=(b,c,sw)=>{ const lo=[b[0],b[2],b[4]], hi=[b[1],b[3],b[5]];
+    if(cut && (at<lo[n]||at>hi[n])) return;
+    els.push({z:0,s:`<rect x="${lo[iu]}" y="${-hi[iv]}" width="${hi[iu]-lo[iu]}" height="${hi[iv]-lo[iv]}" fill="${fillOf(c)}" stroke="${SV.ink}" stroke-width="@${sw}"/>`});
+    ext(lo[iu],lo[iv]); ext(hi[iu],hi[iv]); };
   for(const c of m.concrete){
     if(v.skipStub&&c.kind==='stub') continue;
-    if(c.box){ const b=c.box; const lo=[b[0],b[2],b[4]], hi=[b[1],b[3],b[5]];
-      if(cut && (at<lo[n]||at>hi[n])) continue;
-      els.push({z:0,s:`<rect x="${lo[iu]}" y="${-hi[iv]}" width="${hi[iu]-lo[iu]}" height="${hi[iv]-lo[iv]}" fill="${fillOf(c)}" stroke="${SV.ink}" stroke-width="@1.1"/>`});
-      ext(lo[iu],lo[iv]); ext(hi[iu],hi[iv]); }
+    if(v.skipMat&&c.mat&&v.skipMat.includes(c.mat)) continue;
+    if(c.box) rect(c.box,c,1.1);
+    else if(c.boxes) c.boxes.forEach(b=>rect(b,c,0.45));
     else if(c.cyl){ const {x,z,r,y0:ya,y1:yb}=c.cyl;
       if(v.n==='y'){ if(cut&&(at<ya||at>yb)) continue; const cu=iu===0?x:z, cv=iv===0?x:z; els.push({z:0,s:`<circle cx="${cu}" cy="${-cv}" r="${r}" fill="${fillOf(c)}" stroke="${SV.ink}" stroke-width="@1.1"/>`}); ext(cu-r,cv-r); ext(cu+r,cv+r); }
       else { const cn=v.n==='x'?x:z, cu=v.u==='x'?x:z; let w=r; if(cut){ const d=Math.abs(at-cn); if(d>r) continue; w=Math.sqrt(r*r-d*d);}
         els.push({z:0,s:`<rect x="${cu-w}" y="${-yb}" width="${2*w}" height="${yb-ya}" fill="${fillOf(c)}" stroke="${SV.ink}" stroke-width="@1.1"/>`}); ext(cu-w,ya); ext(cu+w,yb); } }
-    else if(c.prism && v.n==='z'){ const P=c.prism; if(cut&&(at<P.z0||at>P.z1)) continue;
-      els.push({z:0,s:`<polygon points="${P.pts.map(([a,b])=>`${a},${-b}`).join(' ')}" fill="${fillOf(c)}" stroke="${SV.ink}" stroke-width="@1.1"/>`}); P.pts.forEach(([a,b])=>ext(a,b)); }
+    else if(c.prism){ const P=c.prism, pa=P.axis||'z', e0=pa==='x'?P.x0:P.z0, e1=pa==='x'?P.x1:P.z1;
+      const ys=P.pts.map(q=>q[1]), as=P.pts.map(q=>q[0]), ylo=Math.min(...ys), yhi=Math.max(...ys);
+      if(v.n===pa){ if(cut&&(at<e0||at>e1)) continue; // penampang asli
+        els.push({z:0,s:`<polygon points="${P.pts.map(([a,b])=>`${a},${-b}`).join(' ')}" fill="${fillOf(c)}" stroke="${SV.ink}" stroke-width="@1.1"/>`}); P.pts.forEach(([a,b])=>ext(a,b)); }
+      else if(v.n!=='y'){ // dilihat dari samping: digambar sebagai persegi sepanjang ekstrusi (pendekatan)
+        if(cut&&(at<Math.min(...as)||at>Math.max(...as))) continue;
+        els.push({z:0,s:`<rect x="${e0}" y="${-yhi}" width="${e1-e0}" height="${yhi-ylo}" fill="${fillOf(c)}" stroke="${SV.ink}" stroke-width="@1.1"/>`}); ext(e0,ylo); ext(e1,yhi); } }
   }
   // tulangan
   for(const b of m.bars){
@@ -135,10 +208,10 @@ export function renderView(m,v){
   // dimensi dan catatan
   for(const d of v.dims||[]){
     const [ua,va]=d.a,[ub,vb]=d.b, col=d.c||SV.ink2, off=(d.off||0)*k, t=4*k;
-    if(Math.abs(va-vb)<1e-6){ const yy=-va-off; els.push({z:3,s:`<g stroke="${col}" stroke-width="${0.8*k}"><line x1="${ua}" y1="${yy}" x2="${ub}" y2="${yy}"/><line x1="${ua}" y1="${yy-t}" x2="${ua}" y2="${yy+t}"/><line x1="${ub}" y1="${yy-t}" x2="${ub}" y2="${yy+t}"/></g><text x="${(ua+ub)/2}" y="${yy-4*k}" font-size="${10*k}" text-anchor="middle" fill="${col}" font-family="IBM Plex Mono, monospace">${d.t}</text>`}); y0=Math.min(y0,yy-14*k); y1=Math.max(y1,yy+6*k); }
-    else { const xx=ua+off; els.push({z:3,s:`<g stroke="${col}" stroke-width="${0.8*k}"><line x1="${xx}" y1="${-va}" x2="${xx}" y2="${-vb}"/><line x1="${xx-t}" y1="${-va}" x2="${xx+t}" y2="${-va}"/><line x1="${xx-t}" y1="${-vb}" x2="${xx+t}" y2="${-vb}"/></g><text x="${xx-5*k}" y="${-(va+vb)/2}" font-size="${10*k}" text-anchor="middle" fill="${col}" font-family="IBM Plex Mono, monospace" transform="rotate(-90 ${xx-5*k} ${-(va+vb)/2})">${d.t}</text>`}); x0=Math.min(x0,xx-16*k); x1=Math.max(x1,xx+6*k); }
+    if(Math.abs(va-vb)<1e-6){ const yy=-va-off; els.push({z:3,s:`<g stroke="${col}" stroke-width="${0.8*k}"><line x1="${ua}" y1="${yy}" x2="${ub}" y2="${yy}"/><line x1="${ua}" y1="${yy-t}" x2="${ua}" y2="${yy+t}"/><line x1="${ub}" y1="${yy-t}" x2="${ub}" y2="${yy+t}"/></g><text x="${(ua+ub)/2}" y="${yy-4*k}" font-size="${10*k}" text-anchor="middle" fill="${col}" font-family="${SVF}" font-variant-numeric="tabular-nums">${d.t}</text>`}); y0=Math.min(y0,yy-14*k); y1=Math.max(y1,yy+6*k); }
+    else { const xx=ua+off; els.push({z:3,s:`<g stroke="${col}" stroke-width="${0.8*k}"><line x1="${xx}" y1="${-va}" x2="${xx}" y2="${-vb}"/><line x1="${xx-t}" y1="${-va}" x2="${xx+t}" y2="${-va}"/><line x1="${xx-t}" y1="${-vb}" x2="${xx+t}" y2="${-vb}"/></g><text x="${xx-5*k}" y="${-(va+vb)/2}" font-size="${10*k}" text-anchor="middle" fill="${col}" font-family="${SVF}" font-variant-numeric="tabular-nums" transform="rotate(-90 ${xx-5*k} ${-(va+vb)/2})">${d.t}</text>`}); x0=Math.min(x0,xx-16*k); x1=Math.max(x1,xx+6*k); }
   }
-  for(const nt of v.notes||[]){ const [u,w]=nt.at; els.push({z:3,s:`<text x="${u}" y="${-w}" font-size="${10*k*(nt.s||1)}" text-anchor="${nt.a||'middle'}" fill="${nt.c||SV.ink2}" font-family="IBM Plex Mono, monospace">${nt.t}</text>`}); ext(u,w); }
+  for(const nt of v.notes||[]){ const [u,w]=nt.at; els.push({z:3,s:`<text x="${u}" y="${-w}" font-size="${10*k*(nt.s||1)}" text-anchor="${nt.a||'middle'}" fill="${nt.c||SV.ink2}" font-family="${SVF}" font-variant-numeric="tabular-nums">${nt.t}</text>`}); ext(u,w); }
   const px=(x1-x0)*0.05+4*k, py=(y1-y0)*0.05+4*k;
   const vb=[x0-px,y0-py,(x1-x0)+2*px,(y1-y0)+2*py];
   const body=els.sort((a,b)=>a.z-b.z).map(e=>e.s.replace(/@([\d.]+)/g,(_,q)=>String(+q*k)).replace(/#([\d.]+)#/g,(_,q)=>String(Math.max(+q,1.1*k)))).join('');

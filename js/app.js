@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { fmt, renderView, PI } from './core.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { fmt, renderView, PI, MAT } from './core.js';
 import pelat from './comp/pelat.js';
 import balok from './comp/balok.js';
 import kolom from './comp/kolom.js';
@@ -10,8 +11,21 @@ import tangga from './comp/tangga.js';
 import sloof from './comp/sloof.js';
 import telapak from './comp/telapak.js';
 import tiang from './comp/tiang.js';
+import batukali from './comp/batukali.js';
+import sloofpraktis from './comp/sloofpraktis.js';
+import kolompraktis from './comp/kolompraktis.js';
+import bata from './comp/bata.js';
 
-const GROUPS=[['Struktur atas',[pelat,balok,kolom,hbk,dinding,tangga]],['Struktur bawah',[sloof,telapak,tiang]]];
+// Dikelompokkan menurut urutan pelaksanaan gedung beton bertulang. Kelompok tanpa nomor berada di luar urutan.
+const GROUPS=[
+  ['Fondasi',[batukali,telapak,tiang],1],
+  ['Sloof',[sloofpraktis,sloof],2],
+  ['Kolom dan dinding geser',[kolom,dinding],3],
+  ['Balok dan pelat',[balok,pelat],4],
+  ['Tangga',[tangga],5],
+  ['Pasangan dinding',[bata,kolompraktis],6],
+  ['Hubungan',[hbk]]
+];
 const COMPS=Object.fromEntries(GROUPS.flatMap(g=>g[1]).map(c=>[c.id,c]));
 const S=0.001;
 const SYS_TEXT={
@@ -22,28 +36,33 @@ const clone=o=>JSON.parse(JSON.stringify(o));
 const state={comp:'balok',sys:'SRPMK',params:{},vis:{},view:{xray:0.72,cut:1,explode:0,labels:true}};
 for(const c of Object.values(COMPS)){ state.params[c.id]=clone(c.defaults); state.vis[c.id]={}; }
 const sysKey=c=>c.sysDependent?state.sys:'ALL';
+// lapisan boleh mati secara bawaan (off:true), misalnya plesteran; pilihan pengguna tetap diutamakan
+const isOn=L=>{ const v=state.vis[state.comp]?.[L.k]; return v===undefined?!L.off:v!==false; };
 
 /* ===== three ===== */
 const view=document.getElementById('view');
 const renderer=new THREE.WebGLRenderer({antialias:true});
 renderer.setPixelRatio(Math.min(2,window.devicePixelRatio));
-renderer.setClearColor(0xf3f0e8);
+renderer.setClearColor(0xf5f5f7);
 renderer.localClippingEnabled=true;
 view.prepend(renderer.domElement);
 const scene=new THREE.Scene();
 const camera=new THREE.PerspectiveCamera(38,1,0.01,300);
 const controls=new OrbitControls(camera,renderer.domElement);
 controls.enableDamping=true; controls.dampingFactor=0.1;
-scene.add(new THREE.HemisphereLight(0xffffff,0xb8b2a4,2.2));
+scene.add(new THREE.HemisphereLight(0xffffff,0xb4b7bf,2.2));
 const dl=new THREE.DirectionalLight(0xffffff,2.2); dl.position.set(4,7,5); scene.add(dl);
 const dl2=new THREE.DirectionalLight(0xffffff,0.8); dl2.position.set(-5,3,-4); scene.add(dl2);
 const clip=new THREE.Plane(new THREE.Vector3(-1,0,0),1e6), clips=[clip];
 const M={
-  concrete:new THREE.MeshStandardMaterial({color:0xc9c4b8,roughness:.95,transparent:true,opacity:.28,depthWrite:false,clippingPlanes:clips,side:THREE.DoubleSide}),
-  stub:new THREE.MeshStandardMaterial({color:0xb5afa1,roughness:.95,transparent:true,opacity:.18,depthWrite:false,clippingPlanes:clips,side:THREE.DoubleSide}),
-  edge:new THREE.LineBasicMaterial({color:0x6b665c,transparent:true,opacity:.7,clippingPlanes:clips}),
+  concrete:new THREE.MeshStandardMaterial({color:0xc4c6cc,roughness:.95,transparent:true,opacity:.28,depthWrite:false,clippingPlanes:clips,side:THREE.DoubleSide}),
+  stub:new THREE.MeshStandardMaterial({color:0xb0b3ba,roughness:.95,transparent:true,opacity:.18,depthWrite:false,clippingPlanes:clips,side:THREE.DoubleSide}),
+  edge:new THREE.LineBasicMaterial({color:0x8e8e93,transparent:true,opacity:.7,clippingPlanes:clips}),
 };
-const hiMat=new THREE.MeshStandardMaterial({color:0xf59e0b,emissive:0xf59e0b,emissiveIntensity:.5,roughness:.4,clippingPlanes:clips});
+// material pasangan (bata, spesi, batu kali, dan sebagainya); transparansinya ikut slider beton
+const masonMat=new Map();
+const matMason=k=>{ if(!masonMat.has(k)) masonMat.set(k,new THREE.MeshStandardMaterial({color:MAT[k]||k,roughness:.9,transparent:true,opacity:.5,depthWrite:false,clippingPlanes:clips,side:THREE.DoubleSide})); return masonMat.get(k); };
+const hiMat=new THREE.MeshStandardMaterial({color:0xff9500,emissive:0xff9500,emissiveIntensity:.5,roughness:.4,clippingPlanes:clips});
 const matCache=new Map();
 const matOf=c=>{ if(!matCache.has(c)) matCache.set(c,new THREE.MeshStandardMaterial({color:c,roughness:.45,metalness:.3,clippingPlanes:clips})); return matCache.get(c); };
 const zoneCache=new Map();
@@ -65,10 +84,17 @@ function boxMesh(b,mat,edges=true){
   const m=new THREE.Mesh(g,mat); m.position.set((x0+x1)/2*S,(y0+y1)/2*S,(z0+z1)/2*S); return edges?withEdges(m):m;
 }
 function concreteMesh(c){
-  const mat=c.kind==='stub'?M.stub:M.concrete;
+  const mat=c.mat?matMason(c.mat):c.kind==='stub'?M.stub:M.concrete;
   if(c.box) return boxMesh(c.box,mat);
+  if(c.boxes){ // banyak kotak (misalnya bata) digabung menjadi satu geometri agar ringan
+    const gs=c.boxes.map(([x0,x1,y0,y1,z0,z1])=>new THREE.BoxGeometry((x1-x0)*S,(y1-y0)*S,(z1-z0)*S).translate((x0+x1)/2*S,(y0+y1)/2*S,(z0+z1)/2*S));
+    const m=new THREE.Mesh(mergeGeometries(gs),mat); gs.forEach(g=>g.dispose()); return c.edges===false?m:withEdges(m,20); }
   if(c.cyl){ const {x,z,r,y0,y1}=c.cyl; const m=new THREE.Mesh(new THREE.CylinderGeometry(r*S,r*S,(y1-y0)*S,40),mat); m.position.set(x*S,(y0+y1)/2*S,z*S); return withEdges(m,30); }
-  if(c.prism){ const P=c.prism; const sh=new THREE.Shape(P.pts.map(([a,b])=>new THREE.Vector2(a*S,b*S)));
+  if(c.prism){ const P=c.prism;
+    if(P.axis==='x'){ // penampang di bidang z-y, diekstrusi sepanjang x (misalnya fondasi menerus di bawah sloof)
+      const sh=new THREE.Shape(P.pts.map(([z,y])=>new THREE.Vector2(-z*S,y*S)));
+      const g=new THREE.ExtrudeGeometry(sh,{depth:(P.x1-P.x0)*S,bevelEnabled:false}).rotateY(PI/2); const m=new THREE.Mesh(g,mat); m.position.x=P.x0*S; return withEdges(m,20); }
+    const sh=new THREE.Shape(P.pts.map(([a,b])=>new THREE.Vector2(a*S,b*S)));
     const g=new THREE.ExtrudeGeometry(sh,{depth:(P.z1-P.z0)*S,bevelEnabled:false}); const m=new THREE.Mesh(g,mat); m.position.z=P.z0*S; return withEdges(m,20); }
 }
 
@@ -79,7 +105,7 @@ function clearRoot(){ root.traverse(o=>{ if(o.geometry) o.geometry.dispose(); })
 function build3D(m){
   clearRoot(); pickables=[]; groups={};
   const G=k=>groups[k]??=(()=>{const g=new THREE.Group(); g.name=k; root.add(g); return g;})();
-  m.concrete.forEach(c=>G('beton').add(concreteMesh(c)));
+  m.concrete.forEach(c=>G(c.layer||'beton').add(concreteMesh(c)));
   (m.zones||[]).forEach(z=>G('zona').add(boxMesh(z.box,zoneMat(z.color),false)));
   m.bars.forEach(b=>{ const mesh=tube(b.pts,b.d,matOf(b.color),b.maxSeg); mesh.userData={info:b.info,base:mesh.material}; pickables.push(mesh); G(b.layer).add(mesh); });
   labels=m.labels||[];
@@ -106,8 +132,8 @@ function applyView(){
   const v=state.view, op=1-v.xray;
   M.concrete.opacity=Math.max(0.02,op*0.9+0.04); M.stub.opacity=Math.max(0.02,op*0.6+0.03);
   M.concrete.depthWrite=op>0.97; M.edge.opacity=0.25+op*0.5;
-  const vis=state.vis[state.comp];
-  for(const L of layerDefs){ const g=groups[L.k]; if(!g) continue; g.visible=vis[L.k]!==false; const e=L.ex||[0,0,0]; g.position.set(e[0]*S*v.explode,e[1]*S*v.explode,e[2]*S*v.explode); }
+  for(const mm of masonMat.values()){ mm.opacity=Math.max(0.1,1-0.8*v.xray); mm.depthWrite=mm.opacity>0.97; }
+  for(const L of layerDefs){ const g=groups[L.k]; if(!g) continue; g.visible=isOn(L); const e=L.ex||[0,0,0]; g.position.set(e[0]*S*v.explode,e[1]*S*v.explode,e[2]*S*v.explode); }
   if(cutRange){ const a=cutRange.axis; clip.normal.set(a==='x'?-1:0,a==='y'?-1:0,a==='z'?-1:0); const c=cutRange.min+(cutRange.max-cutRange.min)*v.cut; clip.constant=(v.cut>=0.999||!Number.isFinite(c))?1e6:c; }
 }
 /* label */
@@ -145,7 +171,8 @@ function select(o){
   card.classList.add('show');
 }
 document.getElementById('cardX').onclick=()=>select(null);
-const pasalTxt=p=>p==='praktik'?'Praktik umum, bukan pasal SNI':/^(SNI|praktik)/.test(p)?p:'SNI 2847:2019 '+p;
+// Hanya rujukan berbentuk "Pasal ..." atau "Tabel ..." yang merujuk SNI 2847:2019; rujukan lain ditulis apa adanya
+const pasalTxt=p=>p==='praktik'?'Praktik umum, bukan pasal SNI':/^(Pasal|Tabel)\b/.test(p)?'SNI 2847:2019 '+p:p;
 
 // devicePixelRatio bisa berubah setelah halaman dimuat (pindah monitor, zoom, tab dibuka di latar), jadi selalu baca ulang
 function resize(){ const w=view.clientWidth,h=view.clientHeight; if(!w||!h) return; renderer.setPixelRatio(Math.min(2,window.devicePixelRatio)); renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix(); if(fitPending&&model) fitCamera(); }
@@ -156,33 +183,35 @@ renderer.setAnimationLoop(()=>{ controls.update(); renderer.render(scene,camera)
 /* ===== UI ===== */
 function renderNav(){
   let h='';
-  for(const [g,cs] of GROUPS){ h+=`<h4>${g}</h4>`+cs.map(c=>`<button data-comp="${c.id}" class="${c.id===state.comp?'on':''}">${c.name}</button>`).join(''); }
-  h+=`<p class="note">Ubah parameter di panel kanan. Model, gambar, dan hasil pemeriksaan berubah bersamaan. Matikan lapisan di kiri atas untuk melihat tulangan tertentu saja.</p>`;
+  for(const [g,cs,no] of GROUPS){ h+=`<h4>${no?`<span class="step">${no}</span>`:''}${g}</h4>`+cs.map(c=>`<button data-comp="${c.id}" class="${c.id===state.comp?'on':''}">${c.name}</button>`).join(''); }
+  h+=`<p class="note">Komponen diurutkan menurut urutan pelaksanaan, dari fondasi sampai pasangan dinding. Ubah parameter di panel kanan; model, gambar, dan hasil pemeriksaan berubah bersamaan.</p>`;
   document.getElementById('nav').innerHTML=h;
 }
 function renderLayers(){
-  const vis=state.vis[state.comp];
-  let h=`<div class="lh"><b>Lapisan</b><span><button data-all="1">semua</button><button data-all="0">tulangan saja</button></span></div>`;
-  h+=layerDefs.map(L=>`<label><input type="checkbox" data-layer="${L.k}" ${vis[L.k]!==false?'checked':''}><i style="background:${L.color}${L.k==='beton'?';height:10px;opacity:.8':''}"></i>${L.label}</label>`).join('');
+  const vis=state.vis[state.comp], isBlock=L=>L.k==='beton'||L.block;
+  const el=document.getElementById('legend'), open=el.classList.contains('open');
+  let h=`<div class="lh"><button class="lt" aria-expanded="${open}" aria-controls="legendBody"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M4 2.5 7.5 6 4 9.5"/></svg>Lapisan</button><span><button data-all="1">Semua</button><button data-all="0">Tulangan saja</button></span></div>`;
+  h+=`<div class="lb" id="legendBody">`+layerDefs.map(L=>`<label><i style="background:${L.color}" class="${isBlock(L)?'blk':''}"></i><span>${L.label}</span><input type="checkbox" class="sw" data-layer="${L.k}" ${isOn(L)?'checked':''}></label>`).join('');
   if(model.colorNote) h+=`<div class="cn">${model.colorNote}</div>`;
-  const el=document.getElementById('legend'); el.innerHTML=h;
-  el.querySelector('.lh b').onclick=()=>el.classList.toggle('open');
+  h+=`</div>`;
+  el.innerHTML=h;
+  el.querySelector('.lt').onclick=()=>{ const o=el.classList.toggle('open'); el.querySelector('.lt').setAttribute('aria-expanded',String(o)); try{ localStorage.setItem('atlas-tulangan-legend',o?'1':'0'); }catch(e){} };
   el.querySelectorAll('[data-layer]').forEach(cb=>cb.onchange=()=>{ vis[cb.dataset.layer]=cb.checked; applyView(); save(); });
-  el.querySelectorAll('[data-all]').forEach(b=>b.onclick=()=>{ const all=b.dataset.all==='1'; layerDefs.forEach(L=>vis[L.k]= all?true:!(L.k==='beton'||L.k==='zona')); renderLayers(); applyView(); save(); });
+  el.querySelectorAll('[data-all]').forEach(b=>b.onclick=()=>{ const all=b.dataset.all==='1'; layerDefs.forEach(L=>vis[L.k]= all?true:!(isBlock(L)||L.k==='zona')); renderLayers(); applyView(); save(); });
 }
 function renderParams(c,m){
   const pr=state.params[c.id][sysKey(c)];
   let h='';
   for(const [g,fields] of c.schema){
-    h+=`<div class="grp"><h6>${g}</h6>`;
+    h+=`<div class="grp"><h6>${g}</h6><div class="list">`;
     for(const f of fields){
       if(f.show && !f.show(state.sys,pr)) continue;
       const lab=typeof f.label==='function'?f.label(state.sys,pr):f.label;
-      if(f.type==='bool'){ h+=`<div class="row"><label for="f-${f.k}">${lab}</label><input type="checkbox" id="f-${f.k}" data-k="${f.k}" ${pr[f.k]?'checked':''} class="cb"></div>`; continue; }
+      if(f.type==='bool'){ h+=`<div class="row"><label for="f-${f.k}">${lab}</label><input type="checkbox" id="f-${f.k}" data-k="${f.k}" ${pr[f.k]?'checked':''} class="sw"></div>`; continue; }
       if(f.opts){ h+=`<div class="row"><label for="f-${f.k}">${lab}<small>${f.unit||''}</small></label><select id="f-${f.k}" data-k="${f.k}">${f.opts.map(o=>{const [v,t]=Array.isArray(o)?o:[o,f.unit==='D'?'D'+o:o]; return `<option value="${v}" ${v==pr[f.k]?'selected':''}>${t}</option>`;}).join('')}</select></div>`; continue; }
       h+=`<div class="row"><label for="f-${f.k}">${lab}<small>${f.unit||''}</small></label><input type="number" id="f-${f.k}" data-k="${f.k}" min="${f.min}" max="${f.max}" step="${f.step||1}" value="${pr[f.k]}"></div>`;
     }
-    h+='</div>';
+    h+='</div></div>';
   }
   if(m.derived) h+=`<div class="grp"><h6>Nilai turunan</h6><div class="derived">${m.derived}</div></div>`;
   h+=`<button class="btn2" id="resetP">Kembalikan nilai awal</button>`;
@@ -198,8 +227,9 @@ function renderChecks(m){
   const cs=m.checks, n=cs.filter(c=>c.ok!==null).length, ok=cs.filter(c=>c.ok===true).length, bad=n-ok;
   const b=document.getElementById('badge'); b.textContent=bad?`${bad} gagal`:'lolos'; b.className='badge '+(bad?'bad':'good');
   let h=`<div class="sum ${bad?'bad':'good'}">${bad?`${bad} dari ${n} pemeriksaan tidak terpenuhi`:`${ok} dari ${n} pemeriksaan terpenuhi`}</div>`;
-  h+=cs.map(c=>`<div class="chk ${c.ok===null?'info':c.ok?'ok':'bad'}"><div class="ic">${c.ok===null?'i':c.ok?'✓':'✗'}</div><div><div class="t">${c.t}</div><div class="d">${c.d}</div><div class="p">${pasalTxt(c.p)}</div></div></div>`).join('');
-  h+=`<p class="disclaimer">Pemeriksaan ini hanya mencakup detailing dan syarat geometri. Kapasitas lentur, geser, aksial, serta daya dukung tanah tidak dihitung karena memerlukan data beban dan tanah. Nomor pasal mengacu pada SNI 2847:2019, adopsi modifikasi dari ACI 318M-14, dan sudah dicocokkan dengan teks SNI. Pemeriksaan ini tetap alat bantu belajar, bukan pengganti desain oleh perencana. Asumsi: agregat maksimum 20 mm, beton normal, tulangan tanpa lapisan epoksi.</p>`;
+  h+='<div class="list">'+cs.map(c=>`<div class="chk ${c.ok===null?'info':c.ok?'ok':'bad'}"><div class="ic" aria-label="${c.ok===null?'info':c.ok?'terpenuhi':'tidak terpenuhi'}">${c.ok===null?'i':c.ok?'✓':'✕'}</div><div><div class="t">${c.t}</div><div class="d">${c.d}</div><div class="p">${pasalTxt(c.p)}</div></div></div>`).join('')+'</div>';
+  const c0=COMPS[state.comp];
+  h+=`<p class="disclaimer">Pemeriksaan ini hanya mencakup detailing dan syarat geometri. Kapasitas lentur, geser, aksial, serta daya dukung tanah tidak dihitung karena memerlukan data beban dan tanah. ${c0.checkNote||'Nomor pasal mengacu pada SNI 2847:2019, adopsi modifikasi dari ACI 318M-14, dan sudah dicocokkan dengan teks SNI. Asumsi: agregat maksimum 20 mm, beton normal, tulangan tanpa lapisan epoksi.'} Pemeriksaan ini tetap alat bantu belajar, bukan pengganti desain oleh perencana.</p>`;
   document.getElementById('pane-cek').innerHTML=h;
 }
 function renderDrawings(m){
@@ -215,7 +245,7 @@ function renderDrawings(m){
 }
 function renderTeori(c){
   const t=c.teori; const body=t.common+(c.sysDependent?t[state.sys]:(t.ALL||''));
-  document.getElementById('pane-teori').innerHTML=body+`<p class="disclaimer">Rujukan utama: SNI 2847:2019 Persyaratan Beton Struktural untuk Bangunan Gedung, SNI 1726:2019 untuk kategori desain seismik${c.refExtra||''}. Nomor pasal SNI 2847:2019 sudah dicocokkan dengan teks standar.</p>`;
+  document.getElementById('pane-teori').innerHTML=body+`<p class="disclaimer">${c.ref||`Rujukan utama: SNI 2847:2019 Persyaratan Beton Struktural untuk Bangunan Gedung, SNI 1726:2019 untuk kategori desain seismik${c.refExtra||''}. Nomor pasal SNI 2847:2019 sudah dicocokkan dengan teks standar.`}</p>`;
 }
 function save(){ try{ localStorage.setItem('atlas-tulangan-v2',JSON.stringify({comp:state.comp,sys:state.sys,params:state.params,vis:state.vis})); }catch(e){} }
 
@@ -225,7 +255,7 @@ function update(refit){
   select(null); build3D(model); if(refit) fitCamera();
   renderParams(c,model); renderChecks(model); renderDrawings(model); renderTeori(c);
   document.body.classList.remove('sys-SRPMB','sys-SRPMK','sys-NA'); document.body.classList.add('sys-'+(c.sysDependent?state.sys:'NA'));
-  document.getElementById('crumb').textContent=`${c.name} · ${c.sysDependent?(c.sysName?.[state.sys]||state.sys):'umum'} · SNI 2847:2019`;
+  document.getElementById('crumb').textContent=`${c.name} · ${c.sysDependent?(c.sysName?.[state.sys]||state.sys):'umum'} · ${c.std||'SNI 2847:2019'}`;
   document.getElementById('syslabel').textContent=c.sysDependent?(c.sysText?.[state.sys]||SYS_TEXT[state.sys]):'Komponen ini tidak bergantung pada sistem rangka. Detailingnya sama untuk SRPMB dan SRPMK.';
   document.querySelectorAll('#sysSeg button').forEach(x=>{ x.disabled=!c.sysDependent; x.classList.toggle('on',c.sysDependent&&x.dataset.sys===state.sys); });
   document.title=`Atlas Tulangan: ${c.name}`;
@@ -244,6 +274,8 @@ try{ const sv=JSON.parse(localStorage.getItem('atlas-tulangan-v2')||'null');
   if(sv){ for(const id in COMPS){ for(const k in state.params[id]) Object.assign(state.params[id][k],sv.params?.[id]?.[k]||{}); Object.assign(state.vis[id],sv.vis?.[id]||{}); }
     if(COMPS[sv.comp]) state.comp=sv.comp; if(sv.sys) state.sys=sv.sys; } }catch(e){}
 const hash=(location.hash||'').slice(1); if(COMPS[hash]) state.comp=hash;
+// legenda Lapisan: terbuka di layar lebar, terlipat di layar sempit, kecuali pengguna pernah memilih
+{ let lo=null; try{ lo=localStorage.getItem('atlas-tulangan-legend'); }catch(e){} document.getElementById('legend').classList.toggle('open',lo===null?!matchMedia('(max-width: 980px)').matches:lo==='1'); }
 /* ===== panel kiri dan kanan bisa disembunyikan ===== */
 const PANELS={nav:{cls:'hide-nav',btn:'tglNav',nama:'daftar komponen'},side:{cls:'hide-side',btn:'tglSide',nama:'panel konfigurasi'}};
 function setPanel(k,show,store=true){
