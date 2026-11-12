@@ -142,8 +142,10 @@ function select(o){
 document.getElementById('cardX').onclick=()=>select(null);
 const pasalTxt=p=>p==='praktik'?'Praktik umum, bukan pasal SNI':/^(SNI|praktik)/.test(p)?p:'SNI 2847:2019 '+p;
 
-function resize(){ const w=view.clientWidth,h=view.clientHeight; renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix(); }
+// devicePixelRatio bisa berubah setelah halaman dimuat (pindah monitor, zoom, tab dibuka di latar), jadi selalu baca ulang
+function resize(){ const w=view.clientWidth,h=view.clientHeight; renderer.setPixelRatio(Math.min(2,window.devicePixelRatio)); renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix(); }
 new ResizeObserver(resize).observe(view);
+(function watchDPR(){ matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`).addEventListener('change',()=>{ resize(); watchDPR(); },{once:true}); })();
 renderer.setAnimationLoop(()=>{ controls.update(); renderer.render(scene,camera); drawLabels(); });
 
 /* ===== UI ===== */
