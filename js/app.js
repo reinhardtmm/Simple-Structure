@@ -89,7 +89,12 @@ function build3D(m){
   cutRange={axis:ax,min:bb.min[ax],max:bb.max[ax]};
   renderLayers(); applyView();
 }
+// Bila area 3D sedang berukuran nol (tab di latar, panel tersembunyi), aspect = 0/0 = NaN dan posisi kamera ikut NaN.
+// Render lalu gagal setiap frame dan model tampak membeku, jadi penyesuaian kamera ditunda sampai ukurannya nyata.
+let fitPending=false;
 function fitCamera(){
+  if(!view.clientWidth||!view.clientHeight){ fitPending=true; return; }
+  fitPending=false;
   const bb=new THREE.Box3().setFromObject(root); const sph=bb.getBoundingSphere(new THREE.Sphere());
   const vf=camera.fov*PI/180, hf=2*Math.atan(Math.tan(vf/2)*camera.aspect);
   const dist=sph.radius/Math.sin(Math.min(vf,hf)/2)*(model.camK||0.92);
@@ -103,7 +108,7 @@ function applyView(){
   M.concrete.depthWrite=op>0.97; M.edge.opacity=0.25+op*0.5;
   const vis=state.vis[state.comp];
   for(const L of layerDefs){ const g=groups[L.k]; if(!g) continue; g.visible=vis[L.k]!==false; const e=L.ex||[0,0,0]; g.position.set(e[0]*S*v.explode,e[1]*S*v.explode,e[2]*S*v.explode); }
-  if(cutRange){ const a=cutRange.axis; clip.normal.set(a==='x'?-1:0,a==='y'?-1:0,a==='z'?-1:0); clip.constant=v.cut>=0.999?1e6:(cutRange.min+(cutRange.max-cutRange.min)*v.cut); }
+  if(cutRange){ const a=cutRange.axis; clip.normal.set(a==='x'?-1:0,a==='y'?-1:0,a==='z'?-1:0); const c=cutRange.min+(cutRange.max-cutRange.min)*v.cut; clip.constant=(v.cut>=0.999||!Number.isFinite(c))?1e6:c; }
 }
 /* label */
 const labelLayer=document.getElementById('labels'); const _v=new THREE.Vector3();
@@ -143,7 +148,7 @@ document.getElementById('cardX').onclick=()=>select(null);
 const pasalTxt=p=>p==='praktik'?'Praktik umum, bukan pasal SNI':/^(SNI|praktik)/.test(p)?p:'SNI 2847:2019 '+p;
 
 // devicePixelRatio bisa berubah setelah halaman dimuat (pindah monitor, zoom, tab dibuka di latar), jadi selalu baca ulang
-function resize(){ const w=view.clientWidth,h=view.clientHeight; renderer.setPixelRatio(Math.min(2,window.devicePixelRatio)); renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix(); }
+function resize(){ const w=view.clientWidth,h=view.clientHeight; if(!w||!h) return; renderer.setPixelRatio(Math.min(2,window.devicePixelRatio)); renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix(); if(fitPending&&model) fitCamera(); }
 new ResizeObserver(resize).observe(view);
 (function watchDPR(){ matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`).addEventListener('change',()=>{ resize(); watchDPR(); },{once:true}); })();
 renderer.setAnimationLoop(()=>{ controls.update(); renderer.render(scene,camera); drawLabels(); });
