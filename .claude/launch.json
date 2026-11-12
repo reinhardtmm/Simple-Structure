@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "atlas-tulangan",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8765", "--directory", "C:/Users/ASUS/iCloudDrive/CIVILXCLAUDE/atlas-tulangan"],
+      "port": 8765
+    }
+  ]
+}
