@@ -224,7 +224,7 @@ function update(refit){
   model=c.build(p,state.sys);
   select(null); build3D(model); if(refit) fitCamera();
   renderParams(c,model); renderChecks(model); renderDrawings(model); renderTeori(c);
-  document.body.className='sys-'+(c.sysDependent?state.sys:'NA');
+  document.body.classList.remove('sys-SRPMB','sys-SRPMK','sys-NA'); document.body.classList.add('sys-'+(c.sysDependent?state.sys:'NA'));
   document.getElementById('crumb').textContent=`${c.name} · ${c.sysDependent?(c.sysName?.[state.sys]||state.sys):'umum'} · SNI 2847:2019`;
   document.getElementById('syslabel').textContent=c.sysDependent?(c.sysText?.[state.sys]||SYS_TEXT[state.sys]):'Komponen ini tidak bergantung pada sistem rangka. Detailingnya sama untuk SRPMB dan SRPMK.';
   document.querySelectorAll('#sysSeg button').forEach(x=>{ x.disabled=!c.sysDependent; x.classList.toggle('on',c.sysDependent&&x.dataset.sys===state.sys); });
@@ -244,6 +244,24 @@ try{ const sv=JSON.parse(localStorage.getItem('atlas-tulangan-v2')||'null');
   if(sv){ for(const id in COMPS){ for(const k in state.params[id]) Object.assign(state.params[id][k],sv.params?.[id]?.[k]||{}); Object.assign(state.vis[id],sv.vis?.[id]||{}); }
     if(COMPS[sv.comp]) state.comp=sv.comp; if(sv.sys) state.sys=sv.sys; } }catch(e){}
 const hash=(location.hash||'').slice(1); if(COMPS[hash]) state.comp=hash;
+/* ===== panel kiri dan kanan bisa disembunyikan ===== */
+const PANELS={nav:{cls:'hide-nav',btn:'tglNav',nama:'daftar komponen'},side:{cls:'hide-side',btn:'tglSide',nama:'panel konfigurasi'}};
+function setPanel(k,show,store=true){
+  const P=PANELS[k], b=document.getElementById(P.btn);
+  document.body.classList.toggle(P.cls,!show);
+  b.setAttribute('aria-expanded',String(show));
+  const t=`${show?'Sembunyikan':'Tampilkan'} ${P.nama}`; b.setAttribute('aria-label',t); b.title=`${t} ( ${k==='nav'?'[':']'} )`;
+  if(store) try{ localStorage.setItem('atlas-tulangan-layout',JSON.stringify({nav:!document.body.classList.contains('hide-nav'),side:!document.body.classList.contains('hide-side')})); }catch(e){}
+}
+const togglePanel=k=>setPanel(k,document.body.classList.contains(PANELS[k].cls));
+document.getElementById('tglNav').onclick=()=>togglePanel('nav');
+document.getElementById('tglSide').onclick=()=>togglePanel('side');
+window.addEventListener('keydown',e=>{
+  if(e.ctrlKey||e.metaKey||e.altKey||/^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
+  if(e.key==='[') togglePanel('nav'); else if(e.key===']') togglePanel('side');
+});
+try{ const ly=JSON.parse(localStorage.getItem('atlas-tulangan-layout')||'null'); if(ly){ setPanel('nav',ly.nav!==false,false); setPanel('side',ly.side!==false,false); } }catch(e){}
+
 renderNav(); resize(); update(true);
 window.addEventListener('hashchange',()=>{ const h=(location.hash||'').slice(1); if(COMPS[h]&&h!==state.comp){ state.comp=h; renderNav(); update(true); } });
 window.__atlas={state,update,camera,get pickables(){return pickables;},COMPS};
