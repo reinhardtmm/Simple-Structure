@@ -271,11 +271,28 @@ export default {
       const n=Math.max(2,Math.round(H2/base.R)), Lr=(n-1)*base.T, xF=Lr+1200;
       const X1=fx0+100, X2=X1+wd+gap;
       const f1=([x,y,z])=>[X1+z,y,W+x], f2=([x,y,z])=>[X2+z,y+H2,W+Lr-x];
+      const kb=200, hbb=450, bbb=250, bx0=X1-150, bx1=X2+wd+150, zb0=W+xF;
       const mapC=(c,lane)=>({prism:{axis:'x',pts:c.prism.pts.map(([x,y])=>lane===1?[W+x,y]:[W+Lr-x,y+H2]),x0:(lane===1?X1:X2)+c.prism.z0,x1:(lane===1?X1:X2)+c.prism.z1}});
       cp('tg2',...m1.concrete.filter(c=>c.prism).map(c=>({...mapC(c,1),layer:'tanggaB'})),...m2.concrete.filter(c=>c.prism).map(c=>({...mapC(c,2),layer:'tanggaB'})),
         {box:[X1+wd,X2,H2-tt,H2,W+Lr,W+xF],layer:'tanggaB'},                                             // bordes di antara dua lajur
-        {box:[X1-150,X2+wd+150,H2-450,H2,W+xF,W+xF+250],kind:'stub',layer:'tanggaB'},                  // balok bordes
-        {box:[X1-150,X1+wd+150,-tt,0,W-800,W],kind:'stub',layer:'tanggaB'});                          // pelat lantai dasar di kaki tangga
+        {box:[bx0,bx1,H2-hbb,H2,zb0,zb0+bbb],layer:'tanggaB'});                                         // balok bordes
+      // Bordes ditumpu balok bordes, dan balok bordes ditumpu dua kolom tangga di atas fondasi setempat.
+      // Lantai dasar di bawah ruang tangga menjadi pijakan kaki tangga, supaya tangga tidak tampak melayang.
+      const yLt=-120, kxs=[bx0+kb/2,bx1-kb/2], kzc=zb0+bbb/2, yFt=-450, hFt=300, BFt=700;
+      cp('tgL',{box:[bx0,bx1,yLt,0,W-800,zb0+bbb+150],layer:'tanggaB'});
+      kxs.forEach(x=>cp('tgK2',{box:[x-BFt/2,x+BFt/2,yFt-hFt,yFt,kzc-BFt/2,kzc+BFt/2],layer:'tanggaB'},{box:[x-kb/2,x+kb/2,yFt,H2-hbb,kzc-kb/2,kzc+kb/2],layer:'tanggaB'}));
+      const iL={t:'Tulangan lantai dasar D8-200',b:['Satu lapis di tengah tebal pelat lantai kerja di bawah ruang tangga. Pelat ini menumpu kaki tangga.'],pasal:'praktik'};
+      spread(W-800+40,zb0+bbb+150-40,200).forEach(z=>push([[bx0+40,yLt/2,z],[bx1-40,yLt/2,z]],8,'tanggaL',COL.matA,iL,'tgL'));
+      spread(bx0+40,bx1-40,200).forEach(x=>push([[x,yLt/2+8,W-800+40],[x,yLt/2+8,zb0+bbb+150-40]],8,'tanggaL',COL.matB,iL,'tgL'));
+      const iK={t:'Kolom tangga 200 × 200, 4D13, sengkang D8-150',b:['Menumpu balok bordes. Tulangannya dikaitkan ke fondasi setempat di bawah dan ke dalam balok bordes di atas.'],pasal:'praktik'};
+      const ak=kb/2-25-8-6.5, hk=hoop2D(kb/2-25-4,kb/2-25-4,16,hook,K?75:50);
+      kxs.forEach(x=>{ for(const u of [-ak,ak]) for(const v of [-ak,ak]){ const dir=u<0?-1:1, t=turtle(x+u+dir*150,yFt-hFt+75,dir>0?PI:0); t.fwd(150-39).turn(dir>0?-90:90,39).fwd(H2-40-(yFt-hFt+75)-2*39).turn(x<(bx0+bx1)/2?-90:90,39).fwd(150-39);
+          push(t.pts.map(([xx,y])=>[xx,y,kzc+v]),13,'tanggaK',COL.long,iK,'tgK1'); }
+        spread(yFt+50,H2-hbb-50,150).forEach(y=>push(lift3D(hk,(u,v,w)=>[x+u,y+w,kzc+v],8.4),8,'tanggaK',COL.mid,iK,'tgK1')); });
+      const iBb={t:'Balok bordes 250 × 450, 2D13 atas dan bawah, sengkang D8-150',b:['Menumpu bordes dan menyalurkan bebannya ke kolom tangga.'],pasal:'praktik'};
+      const zbl=bbb/2-30-8-6.5; [H2-30-8-6.5-13,H2-hbb+30+8+6.5+13].forEach(y=>[-zbl,zbl].forEach(dz=>push([[bx0+30,y,kzc+dz],[bx1-30,y,kzc+dz]],13,'tanggaK',COL.top,iBb,'tg1')));
+      const hbbH=hoop2D(bbb/2-30-4,hbb/2-30-4,16,hook,K?75:50);
+      spread(bx0+kb+50,bx1-kb-50,150).forEach(x=>push(lift3D(hbbH,(u,v,w)=>[x+w,H2-hbb/2+v,kzc+u],8.4),8,'tanggaK',COL.mid,iBb,'tg1'));
       [[m1,f1],[m2,f2]].forEach(([m,f],li)=>m.bars.forEach(bb=>push(bb.pts.map(f),bb.d,bb.layer==='bagi'?'tanggaD':'tangga',bb.color,{...bb.info,t:`Tangga lajur ${li+1}: ${bb.info.t}`},'tg1')));
       // tulangan bordes di bagian antara kedua lajur
       const iBd={t:'Tulangan bordes D10-200',b:['Menyambung bordes kedua lajur, atas dan bawah.'],pasal:'Pasal 24.4.3'};
@@ -283,7 +300,7 @@ export default {
       labels.push({p:[X1+wd/2,H2*0.5,W+Lr*0.5],t:'tangga',stage:'tg2'},{p:[X1+wd,H2+60,W+Lr+600],t:'bordes',stage:'tg2'});
       m1.checks.filter(c=>c.ok!==null).forEach(c=>add(c.ok,`Tangga: ${c.t[0].toLowerCase()+c.t.slice(1)}`,c.d,c.p));
       add(span>=2*800+gap+200,'Ruang tangga di antara kolom',`lebar lajur ${fmt(wd)} mm, dua lajur dan celah ${gap} mm di bentang bersih ${fmt(span)} mm`,'praktik');
-      add(null,'Tumpuan bordes','balok bordes ditumpu kolom atau dinding di sekeliling ruang tangga, tidak dimodelkan di sini','praktik');
+      add(true,'Tumpuan bordes',`balok bordes ${bbb} × ${hbb} ditumpu dua kolom tangga ${kb} × ${kb} di atas fondasi setempat`,'praktik');
       const zs=spread(50,wd-50,base.sm), zm=zs[Math.floor(zs.length/2)];
       tgView={title:'Potongan tangga lajur pertama',sub:`naik ${n} × ${fmt(H2/n,1)} / ${base.T} mm sampai bordes, tulangan disilangkan di sudut dalam`,n:'x',at:X1+zm+base.dbm*0.6,half:base.dbm*1.5,u:'z',v:'y',maxH:440};
     }
@@ -298,7 +315,7 @@ export default {
     add(null,'Pemeriksaan lengkap','setiap komponen diperiksa lengkap di halamannya masing-masing; di sini yang diperiksa adalah sambungannya','praktik');
     // ---------- gambar ----------
     // tangga berada di luar bidang portal, jadi disembunyikan dari tampak depan dan potongan portal; ia punya potongan sendiri
-    const noTg=['tanggaB','tangga','tanggaD'];
+    const noTg=['tanggaB','tangga','tanggaD','tanggaK','tanggaL'];
     const views=[
       {title:'Tampak depan portal',sub:`bentang ${fmt(Lb)} mm, tinggi ${fmt(Hk)} mm`,n:'z',u:'x',v:'y',skipMat:['spesi'],skipLayer:noTg,layers:['kolom','balok','sloof','fondasi','kp','angkur','hbk','dgV','dgH'],maxH:520,
         dims:[{a:[0,Hk+150],b:[Lb,Hk+150],off:8,t:`${fmt(Lb)}`}]},
@@ -314,7 +331,8 @@ export default {
       {k:'pelat',label:'Tulangan pelat',color:COL.matT,ex:[0,900,0]},{k:'bata',label:'Dinding bata',color:bt.ringan?MAT.ringan:MAT.bata,block:true,ex:[0,0,-1200]},
       {k:'kp',label:'Kolom praktis',color:COL.long,ex:[0,0,-1200]},{k:'angkur',label:'Angkur',color:COL.dowel,ex:[0,0,600]},
       {k:'dgV',label:'Tulangan vertikal dinding geser',color:COL.matA,ex:[0,0,-1200]},{k:'dgH',label:'Tulangan horizontal dinding geser',color:COL.webH,ex:[0,0,-1200]},
-      {k:'tanggaB',label:'Beton tangga',color:'#c9c4b8',block:true,ex:[0,0,1500]},{k:'tangga',label:'Tulangan utama tangga',color:COL.matA,ex:[0,0,1500]},{k:'tanggaD',label:'Tulangan bagi tangga',color:COL.dist,ex:[0,0,1500]}];
+      {k:'tanggaB',label:'Beton tangga',color:'#c9c4b8',block:true,ex:[0,0,1500]},{k:'tangga',label:'Tulangan utama tangga',color:COL.matA,ex:[0,0,1500]},{k:'tanggaD',label:'Tulangan bagi tangga',color:COL.dist,ex:[0,0,1500]},
+      {k:'tanggaK',label:'Kolom dan balok bordes',color:COL.long,ex:[0,0,1500]},{k:'tanggaL',label:'Tulangan lantai dasar',color:COL.matA,ex:[0,-400,1500]}];
     // ---------- urutan pelaksanaan ----------
     // Urutan dan teksnya menyesuaikan komponen yang menyala. Tanpa kolom struktur (rumah tembokan), ring balok dicor
     // setelah dinding bata dan kolom praktis, bukan sebelum dinding seperti pada portal beton.
@@ -331,13 +349,16 @@ export default {
       ['bp1',`${BPn}: pembesian`,p.kolom?`Perancah dan bekisting balok${p.pelat?' serta pelat':''} dipasang. ${jOn?'Sengkang joint dipasang lebih dulu, lalu tulangan balok dimasukkan menembus joint':'Tulangan balok dimasukkan dan dibengkokkan ke dalam kolom'}${p.pelat?', dan terakhir tulangan pelat dirangkai.':'.'}`
         :`Bekisting ring balok dipasang di atas dinding bata. Tulangan ring balok dirangkai dan diikat ke ujung tulangan kolom praktis yang dibengkokkan.${p.pelat?' Tulangan pelat dirangkai sesudahnya.':''}`],
       ['bp2',`${BPn}: pengecoran`,p.kolom?`${BPn}${jOn?' dan joint':''} dicor bersamaan dalam satu tahap, lalu dirawat beberapa hari sebelum perancah dibongkar.`:`Ring balok dicor dan mengikat semua kolom praktis serta puncak dinding menjadi satu kesatuan.`],
-      ['tg1','Tangga: pembesian','Bekisting lajur tangga dan bordes dipasang. Di sudut dalam, tulangan tidak dibengkokkan mengikuti sudut tetapi disilangkan dan diangkur ke sisi seberang; tulangan atas lajur kedua masuk ke pelat lantai.'],
-      ['tg2','Tangga: pengecoran','Tangga dicor dari kaki ke bordes, lalu lajur kedua sampai pelat. Anak tangga dibentuk dengan papan bekisting tegak.'],
+      ['tgK1','Kolom tangga: pembesian','Fondasi setempat untuk kolom tangga digali dan dicor. Tulangan kolom tangga didirikan dari fondasi itu dan dipasangi sengkang.'],
+      ['tgK2','Kolom tangga: pengecoran','Kolom tangga dicor sampai di bawah balok bordes.'],
+      ['tgL','Lantai dasar ruang tangga','Tanah dipadatkan, lalu pelat lantai kerja dengan satu lapis tulangan D8-200 dicor sebagai pijakan kaki tangga.'],
+      ['tg1','Tangga: pembesian','Bekisting lajur tangga, bordes, dan balok bordes dipasang. Di sudut dalam, tulangan tidak dibengkokkan mengikuti sudut tetapi disilangkan dan diangkur ke sisi seberang; tulangan atas lajur kedua masuk ke pelat lantai.'],
+      ['tg2','Tangga: pengecoran','Tangga, bordes, dan balok bordes dicor dari kaki ke bordes, lalu lajur kedua sampai pelat. Anak tangga dibentuk dengan papan bekisting tegak.'],
       ['bata','Pasangan dinding bata',`Bata dipasang lapis demi lapis di atas ${hasS?'sloof':'fondasi'}. ${kpOn?'Ujung pasangan dibuat bergigi di posisi kolom praktis, dan angkur':'Angkur'} dipasang di siar datar setiap 6 lapis.`],
       ['kp','Kolom praktis: pengecoran',`${hasS?'Tulangan kolom praktis sudah berdiri sejak tahap sloof. ':'Tulangan kolom praktis didirikan. '}Setelah bata terpasang, bekisting dipasang dan kolom praktis dicor menempel pada gigi bata.`]
     ];
     if(!p.kolom){ const mv=ORDER.filter(([k])=>k==='bp1'||k==='bp2'); mv.forEach(e=>ORDER.splice(ORDER.indexOf(e),1)); ORDER.push(...mv);
-      const t=ORDER.filter(([k])=>k==='tg1'||k==='tg2'); t.forEach(e=>ORDER.splice(ORDER.indexOf(e),1)); ORDER.push(...t); }
+      const t=ORDER.filter(([k])=>/^tg/.test(k)); t.forEach(e=>ORDER.splice(ORDER.indexOf(e),1)); ORDER.push(...t); }
     const present=new Set([...concrete,...bars,...labels].map(o=>o.stage).filter(Boolean));
     const stages=ORDER.filter(([k])=>present.has(k)), sIdx=Object.fromEntries(stages.map(([k],i)=>[k,i]));
     [...concrete,...bars,...labels].forEach(o=>{ if(o.stage) o.stage=sIdx[o.stage]; });

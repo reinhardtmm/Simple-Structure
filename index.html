@@ -167,7 +167,7 @@ nav .psel>button:hover:not(.on){background:var(--fill)}
 nav .psel>button[aria-expanded=true],nav .psel>button:focus-visible{outline:none;box-shadow:0 0 0 3px color-mix(in srgb,var(--tint) 35%,transparent)}
 nav .psel svg{flex:none;fill:none;stroke-linecap:round;stroke-linejoin:round}
 nav .psel>button svg{width:9px;height:13px;stroke:var(--label2);stroke-width:1.5}
-nav .pmenu{position:absolute;left:-6px;right:-6px;top:calc(100% + 5px);z-index:30;background:var(--menu);border-radius:12px;padding:5px;
+nav .pmenu{position:fixed;z-index:80;max-height:min(420px,calc(100vh - 24px));overflow:auto;background:var(--menu);border-radius:12px;padding:5px;
   box-shadow:0 12px 32px rgba(0,0,0,.24),0 2px 6px rgba(0,0,0,.12),0 0 0 .5px var(--sep);animation:pm .14s cubic-bezier(.2,.8,.2,1)}
 @keyframes pm{from{opacity:0;transform:translateY(-4px) scale(.98)}}
 nav .pmenu button{align-items:flex-start;gap:7px;padding:7px 9px 7px 7px;font-size:13.5px;line-height:1.3;border-radius:7px;color:var(--label)}
@@ -188,6 +188,7 @@ nav .tgl+.tgl::before{content:'';position:absolute;top:0;left:10px;right:0;borde
 nav .tgl span{flex:1;min-width:0}
 nav .tgl small{display:block;font-size:11px;color:var(--label2);margin-top:1px}
 nav .tgl.dis{cursor:default}
+nav .tgl.busy{opacity:.7;transition:opacity .15s}
 nav .tgl.dis span,nav .tgl.dis small{color:var(--label3)}
 input.sw:disabled{opacity:.4;cursor:default}
 
@@ -375,8 +376,27 @@ aside{border-left:.5px solid var(--sep);display:flex;flex-direction:column;min-h
   #sysSeg button{flex:1}
   main{display:flex;flex-direction:column}
   nav{border-right:0;border-bottom:.5px solid var(--sep);display:flex;align-items:center;gap:4px;overflow-x:auto;padding:8px}
-  nav h4,nav .note{display:none}
+  nav h4,nav .note,nav .empty{display:none}
   nav button{width:auto;white-space:nowrap;padding:6px 12px}
+  /* Di layar sempit semua isi panel kiri menjadi satu baris dengan tinggi seragam. Pembungkus kelompok dibuka
+     (display: contents), sehingga setiap tombol dan toggle menjadi kotak sendiri yang sejajar. */
+  nav{align-items:stretch;gap:6px}
+  nav>*{flex:none}
+  nav [data-grp],nav .tg{display:contents}
+  nav [hidden]{display:none!important}
+  nav .search{width:180px;margin:0;display:flex;align-items:center}
+  nav>button,nav [data-grp]>button{height:46px}
+  nav .gab{margin:0}
+  nav .back{padding:0 12px}
+  nav .tgl{height:46px;min-height:0;padding:0 12px;gap:12px;background:var(--bg2);border-radius:var(--r-m);white-space:nowrap}
+  nav .tgl+.tgl::before{display:none}
+  nav .tgl small{white-space:nowrap}
+  nav .presetbox{display:flex;align-items:center;gap:8px;margin:0;padding:0 8px;height:46px}
+  nav .presetbox .pl,nav .presetbox .pd{display:none}
+  nav .psel{flex:none;width:auto}
+  nav .psel>button{width:auto;white-space:nowrap}
+  nav .presetbox .play{flex:none}
+  nav .presetbox .play{width:auto;white-space:nowrap}
   #view{height:62vh;min-height:380px}
   body.hide-nav nav,body.hide-side aside{display:none}
   body.hide-nav.hide-side #view{height:calc(100vh - 110px)}

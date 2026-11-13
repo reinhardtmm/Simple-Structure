@@ -72,15 +72,39 @@ const matOf=c=>{ if(!matCache.has(c)) matCache.set(c,new THREE.MeshStandardMater
 const zoneCache=new Map();
 const zoneMat=c=>{ if(!zoneCache.has(c)) zoneCache.set(c,new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:.09,depthWrite:false,side:THREE.DoubleSide,clippingPlanes:clips})); return zoneCache.get(c); };
 
-class Polyline3 extends THREE.Curve{
-  constructor(pts){super();this.pts=pts;this.cum=[0];for(let i=1;i<pts.length;i++)this.cum.push(this.cum[i-1]+pts[i].distanceTo(pts[i-1]));this.len=this.cum.at(-1)||1e-6;}
-  getPoint(t,target=new THREE.Vector3()){const L=t*this.len,c=this.cum;let lo=0,hi=c.length-1;while(hi-lo>1){const m=(lo+hi)>>1;if(c[m]<=L)lo=m;else hi=m;}const seg=c[hi]-c[lo]||1;return target.copy(this.pts[lo]).lerp(this.pts[hi],(L-c[lo])/seg);}
+// Tabung tulangan dibuat langsung ke typed array dengan satu cincin di setiap titik polyline. Lengkungan sudah dipecah
+// per 10° oleh turtle(), jadi bagian lurus cukup satu segmen. Bingkai cincin dibawa sepanjang batang (parallel transport,
+// sama seperti computeFrenetFrames di three.js), dan susunan segitiganya mengikuti TubeGeometry. Cara ini jauh lebih
+// cepat daripada TubeGeometry, sehingga membangun ulang ratusan batang saat toggle diubah tidak lagi membekukan halaman.
+const _t0=new THREE.Vector3(),_t1=new THREE.Vector3(),_n=new THREE.Vector3(),_b=new THREE.Vector3(),_ax=new THREE.Vector3(),_q=new THREE.Quaternion();
+function tubeGeo(P,r,R=8){
+  const n=P.length, ring=R+1, pos=new Float32Array(n*ring*3), nor=new Float32Array(n*ring*3);
+  const idx=new (n*ring>65535?Uint32Array:Uint16Array)((n-1)*R*6), tan=(i,out)=>{
+    if(i===0) return out.subVectors(P[1],P[0]).normalize(); if(i===n-1) return out.subVectors(P[n-1],P[n-2]).normalize();
+    _ax.subVectors(P[i],P[i-1]).normalize(); return out.subVectors(P[i+1],P[i]).normalize().add(_ax).normalize(); };
+  tan(0,_t0); const ax=Math.abs(_t0.x),ay=Math.abs(_t0.y),az=Math.abs(_t0.z);
+  _ax.set(ax<=ay&&ax<=az?1:0,ay<ax&&ay<=az?1:0,az<ax&&az<ay?1:0); _b.crossVectors(_t0,_ax).normalize(); _n.crossVectors(_t0,_b);
+  for(let i=0;i<n;i++){
+    if(i>0){ tan(i,_t1); _ax.crossVectors(_t0,_t1); const l=_ax.length(); if(l>1e-9){ _q.setFromAxisAngle(_ax.multiplyScalar(1/l),Math.acos(Math.min(1,Math.max(-1,_t0.dot(_t1))))); _n.applyQuaternion(_q); } _t0.copy(_t1); }
+    _b.crossVectors(_t0,_n); const p=P[i];
+    for(let j=0;j<=R;j++){ const v=j/R*Math.PI*2, sn=Math.sin(v), cs=-Math.cos(v), k=(i*ring+j)*3;
+      const nx=cs*_n.x+sn*_b.x, ny=cs*_n.y+sn*_b.y, nz=cs*_n.z+sn*_b.z;
+      nor[k]=nx; nor[k+1]=ny; nor[k+2]=nz; pos[k]=p.x+r*nx; pos[k+1]=p.y+r*ny; pos[k+2]=p.z+r*nz; }
+  }
+  let o=0; for(let i=1;i<n;i++) for(let j=1;j<=R;j++){ const a=ring*(i-1)+j-1, b=ring*i+j-1, c=ring*i+j, d=ring*(i-1)+j; idx[o++]=a; idx[o++]=b; idx[o++]=d; idx[o++]=b; idx[o++]=c; idx[o++]=d; }
+  const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(pos,3)); g.setAttribute('normal',new THREE.BufferAttribute(nor,3)); g.setIndex(new THREE.BufferAttribute(idx,1)); return g;
 }
-function tube(ptsMM,d,mat,maxSeg=900){
-  const pts=ptsMM.map(p=>new THREE.Vector3(p[0]*S,p[1]*S,p[2]*S));
-  const c=new Polyline3(pts), r=d/2*S;
-  const segs=pts.length===2?1:Math.min(maxSeg,Math.max(8,Math.ceil(c.len/Math.max(r*1.6,0.006))));
-  return new THREE.Mesh(new THREE.TubeGeometry(c,segs,r,8,false),mat);
+// Geometri batang disimpan per bentuk. Saat model dibangun ulang (misalnya satu toggle diubah), batang yang bentuknya
+// sama memakai geometri lama yang sudah ada di GPU; hanya batang baru yang dibuat, dan yang tidak terpakai dibuang.
+let geoOld=new Map(), geoNew=new Map(); const geoSpare=new Map();  // geoSpare: batang yang baru tidak terpakai, disimpan sebentar
+function barKey(ptsMM,d){ let h=d|0; for(const p of ptsMM){ h=(Math.imul(h,31)+Math.round(p[0]*10))|0; h=(Math.imul(h,31)+Math.round(p[1]*10))|0; h=(Math.imul(h,31)+Math.round(p[2]*10))|0; } return `${d}:${ptsMM.length}:${h}`; }
+function tube(ptsMM,d,mat){
+  const key=barKey(ptsMM,d), hit=geoNew.get(key)||geoOld.get(key)||geoSpare.get(key); geoSpare.delete(key);
+  if(hit){ geoNew.set(key,hit); return new THREE.Mesh(hit,mat); }
+  const pts=[]; for(const p of ptsMM){ const v=new THREE.Vector3(p[0]*S,p[1]*S,p[2]*S); if(!pts.length||v.distanceToSquared(pts.at(-1))>1e-12) pts.push(v); }
+  if(pts.length<2) pts.push(pts[0].clone().add(new THREE.Vector3(1e-4,0,0)));
+  const g=tubeGeo(pts,d/2*S); g.userData.cached=true; geoNew.set(key,g);
+  return new THREE.Mesh(g,mat);
 }
 function withEdges(mesh,thr=1){ mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(mesh.geometry,thr),M.edge)); return mesh; }
 function boxMesh(b,mat,edges=true){
@@ -108,19 +132,22 @@ function concreteMesh(c){
 const root=new THREE.Group(); scene.add(root);
 let staged=[], groups={}, pickables=[], labels=[], model=null, selected=null, cutRange=null, layerDefs=[];
 
-function clearRoot(){ root.traverse(o=>{ if(o.geometry) o.geometry.dispose(); }); root.clear(); }
+function clearRoot(){ root.traverse(o=>{ if(o.geometry&&!o.geometry.userData.cached) o.geometry.dispose(); }); root.clear(); }
 function build3D(m){
   clearRoot(); pickables=[]; groups={}; staged=[]; seq.tw=null;
   const G=k=>groups[k]??=(()=>{const g=new THREE.Group(); g.name=k; root.add(g); return g;})();
   m.concrete.forEach(c=>{ const mesh=concreteMesh(c); if(c.stage!=null){ mesh.userData.stage=c.stage; mesh.userData.pour=true; staged.push(mesh); } G(c.layer||'beton').add(mesh); });
   (m.zones||[]).forEach(z=>G('zona').add(boxMesh(z.box,zoneMat(z.color),false)));
-  m.bars.forEach(b=>{ const mesh=tube(b.pts,b.d,matOf(b.color),b.maxSeg); mesh.userData={info:b.info,base:mesh.material}; if(b.stage!=null){ mesh.userData.stage=b.stage; staged.push(mesh); } pickables.push(mesh); G(b.layer).add(mesh); });
+  geoOld=geoNew; geoNew=new Map();
+  m.bars.forEach(b=>{ const mesh=tube(b.pts,b.d,matOf(b.color)); mesh.userData={info:b.info,base:mesh.material}; if(b.stage!=null){ mesh.userData.stage=b.stage; staged.push(mesh); } pickables.push(mesh); G(b.layer).add(mesh); });
+  for(const [k,g] of geoOld) if(!geoNew.has(k)) geoSpare.set(k,g); geoOld=new Map();
+  for(const [k,g] of geoSpare){ if(geoSpare.size<=2500) break; g.dispose(); geoSpare.delete(k); }
   labels=m.labels||[];
   layerDefs=[{k:'beton',label:'Beton',color:'#c9c4b8',ex:m.betonEx||[0,0,0]},...m.layers.filter(l=>groups[l.k]),...((m.zones||[]).length?[{k:'zona',label:'Zona daerah khusus',color:'#0f766e',ex:m.betonEx||[0,0,0],zone:true}]:[])];
   // rentang potong
   const bb=new THREE.Box3().setFromObject(root); const ax=m.cutAxis||'x';
   cutRange={axis:ax,min:bb.min[ax],max:bb.max[ax]};
-  renderLayers(); applyView();
+  renderLayers(); applyView(); invalidate();
   if(!m.stages){ seq.on=false; seq.playing=false; } else seq.step=Math.min(seq.step,m.stages.length-1);
   seqApply(false);
 }
@@ -145,6 +172,7 @@ function applyView(){
   for(const mm of masonMat.values()){ mm.opacity=Math.max(0.1,1-0.8*v.xray); mm.depthWrite=mm.opacity>0.97; }
   for(const L of layerDefs){ const g=groups[L.k]; if(!g) continue; g.visible=isOn(L); const e=L.ex||[0,0,0]; g.position.set(e[0]*S*v.explode,e[1]*S*v.explode,e[2]*S*v.explode); }
   if(cutRange){ const a=cutRange.axis; clip.normal.set(a==='x'?-1:0,a==='y'?-1:0,a==='z'?-1:0); const c=cutRange.min+(cutRange.max-cutRange.min)*v.cut; clip.constant=(v.cut>=0.999||!Number.isFinite(c))?1e6:c; }
+  invalidate();
 }
 /* label */
 const labelLayer=document.getElementById('labels'); const _v=new THREE.Vector3();
@@ -173,10 +201,10 @@ renderer.domElement.addEventListener('pointerup',e=>{
   select(hits[0]?.object||null);
 });
 function select(o){
-  if(selected) selected.material=selected.userData.base;
+  if(selected){ selected.material=selected.userData.base; invalidate(); }
   selected=o; const card=document.getElementById('card');
   if(!o||!o.userData.info){ selected=null; card.classList.remove('show'); return; }
-  o.material=hiMat; const i=o.userData.info;
+  o.material=hiMat; invalidate(); const i=o.userData.info;
   document.getElementById('cardT').textContent=i.t;
   document.getElementById('cardB').innerHTML=(i.b||[]).filter(Boolean).map(s=>`<p>${s}</p>`).join('')+(i.pasal?`<p class="pasal">${pasalTxt(i.pasal)}</p>`:'');
   card.classList.add('show');
@@ -185,9 +213,15 @@ document.getElementById('cardX').onclick=()=>select(null);
 // Hanya rujukan berbentuk "Pasal ..." atau "Tabel ..." yang merujuk SNI 2847:2019; rujukan lain ditulis apa adanya
 const pasalTxt=p=>p==='praktik'?'Praktik umum, bukan pasal SNI':/^(Pasal|Tabel)\b/.test(p)?'SNI 2847:2019 '+p:p;
 
+// Scene hanya digambar ulang bila ada yang berubah (kamera, lapisan, model, animasi). Saat diam GPU tidak bekerja,
+// sehingga animasi panel dan interaksi lain tidak berebut waktu dengan render 3D setiap frame.
+let dirty=2; function invalidate(){ dirty=2; }
+controls.addEventListener('change',invalidate);
 // devicePixelRatio bisa berubah setelah halaman dimuat (pindah monitor, zoom, tab dibuka di latar), jadi selalu baca ulang
-function resize(){ const w=view.clientWidth,h=view.clientHeight; if(!w||!h) return; renderer.setPixelRatio(Math.min(2,window.devicePixelRatio)); renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix(); if(fitPending&&model) fitCamera(); }
-new ResizeObserver(resize).observe(view);
+function resize(){ const w=view.clientWidth,h=view.clientHeight; if(!w||!h) return; renderer.setPixelRatio(Math.min(2,window.devicePixelRatio)); renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix(); if(fitPending&&model) fitCamera(); invalidate(); }
+// Selama panel kiri atau kanan bergeser, kanvas cukup direntangkan oleh CSS. Ukuran buffer WebGL baru diubah sekali
+// setelah animasi selesai; mengubahnya di setiap frame animasi adalah sumber patah-patah saat panel dibuka.
+let rzT=0; new ResizeObserver(()=>{ clearTimeout(rzT); if(document.body.classList.contains('panel-anim')) rzT=setTimeout(resize,60); else resize(); }).observe(view);
 (function watchDPR(){ matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`).addEventListener('change',()=>{ resize(); watchDPR(); },{once:true}); })();
 /* ===== animasi urutan pelaksanaan (komponen yang punya model.stages) ===== */
 // Objek bertahap disembunyikan sampai tahapnya tiba. Tulangan turun ke posisinya; beton dan bata "dicor" naik dari bawah
@@ -214,7 +248,7 @@ function tweenStep(now){
   if(k>=1) finishTween();
 }
 function seqApply(animate){
-  finishTween();
+  finishTween(); invalidate();
   for(const o of staged) o.visible=!seq.on||o.userData.stage<=seq.step;
   if(seq.on&&animate) startTween();
   renderSeqUI();
@@ -291,7 +325,9 @@ function flyStep(dt){
   camera.position.addScaledVector(_f,fw*sp).addScaledVector(_r,rt*sp).addScaledVector(UP,upd*sp);
 }
 let lastErr='';
-renderer.setAnimationLoop(()=>{ try{ const dt=Math.min(clock.getDelta(),0.1), now=performance.now(); tweenStep(now); seqTick(now); if(fly.on) flyStep(dt); else controls.update(); renderer.render(scene,camera); drawLabels(); }
+renderer.setAnimationLoop(()=>{ try{ const dt=Math.min(clock.getDelta(),0.1), now=performance.now(); tweenStep(now); seqTick(now);
+    if(fly.on){ flyStep(dt); dirty=2; } else controls.update();
+    if(seq.tw||dirty>0){ renderer.render(scene,camera); drawLabels(); if(dirty>0) dirty--; } }
   catch(err){ if(String(err)!==lastErr){ lastErr=String(err); console.error('Gagal merender frame:',err); } } });
 
 /* ===== UI ===== */
@@ -360,8 +396,8 @@ function renderLayers(){
   h+=`</div>`;
   el.innerHTML=h;
   el.querySelector('.lt').onclick=()=>{ const o=el.classList.toggle('open'); el.querySelector('.lt').setAttribute('aria-expanded',String(o)); try{ localStorage.setItem('atlas-tulangan-legend',o?'1':'0'); }catch(e){} };
-  el.querySelectorAll('[data-layer]').forEach(cb=>cb.onchange=()=>{ vis[cb.dataset.layer]=cb.checked; applyView(); renderDrawings(model); save(); });
-  el.querySelectorAll('[data-all]').forEach(b=>b.onclick=()=>{ const all=b.dataset.all==='1'; layerDefs.forEach(L=>vis[L.k]= all?true:!(isBlock(L)||L.k==='zona')); renderLayers(); applyView(); renderDrawings(model); save(); });
+  el.querySelectorAll('[data-layer]').forEach(cb=>cb.onchange=()=>{ vis[cb.dataset.layer]=cb.checked; applyView(); drawingsLater(model); save(); });
+  el.querySelectorAll('[data-all]').forEach(b=>b.onclick=()=>{ const all=b.dataset.all==='1'; layerDefs.forEach(L=>vis[L.k]= all?true:!(isBlock(L)||L.k==='zona')); renderLayers(); applyView(); drawingsLater(model); save(); });
 }
 function renderParams(c,m){
   const pr=state.params[c.id][sysKey(c)];
@@ -402,7 +438,11 @@ function visibleModel(m){
   return {m:off.size?{...m,concrete:m.concrete.filter(c=>!off.has(c.layer||'beton')),bars:m.bars.filter(b=>!off.has(b.layer))}:m,
     hidden:layerDefs.filter(L=>off.has(L.k)&&!L.zone).map(L=>L.label.toLowerCase())};
 }
+// Gambar 2D cukup berat untuk model besar, jadi baru dibuat saat tab Gambar sedang terbuka
+let drawDirty=false;
+function drawingsLater(m){ if(document.getElementById('pane-gambar').classList.contains('on')) renderDrawings(m); else drawDirty=true; }
 function renderDrawings(m0){
+  drawDirty=false;
   const {m,hidden}=visibleModel(m0);
   let h='', i=0; const V=m.views||[];
   if(!m.concrete.length&&!m.bars.length){ document.getElementById('pane-gambar').innerHTML=`<p class="disclaimer">Semua lapisan disembunyikan, jadi tidak ada yang digambar. Nyalakan lapisan di panel Lapisan.</p>`; return; }
@@ -421,11 +461,13 @@ function renderTeori(c){
 }
 function save(){ try{ localStorage.setItem('atlas-tulangan-v2',JSON.stringify({comp:state.comp,sys:state.sys,params:state.params,vis:state.vis,viewBy:state.viewBy})); }catch(e){} }
 
+let timing=null;  // waktu tahap terakhir update(), untuk diagnosis lewat window.__atlas.timing
 function update(refit){
   const c=COMPS[state.comp]; const p=state.params[c.id][sysKey(c)];
-  model=c.build(p,state.sys);
-  select(null); syncSliders(); build3D(model); if(refit) fitCamera();
-  renderParams(c,model); renderChecks(model); renderDrawings(model); renderTeori(c);
+  const T0=performance.now(); model=c.build(p,state.sys); const T1=performance.now();
+  select(null); syncSliders(); build3D(model); if(refit) fitCamera(); const T2=performance.now();
+  renderParams(c,model); renderChecks(model); drawingsLater(model); renderTeori(c);
+  timing={build:T1-T0,scene:T2-T1,panels:performance.now()-T2};
   document.body.classList.remove('sys-SRPMB','sys-SRPMK','sys-NA'); document.body.classList.add('sys-'+(c.sysDependent?state.sys:'NA'));
   document.getElementById('crumb').textContent=`${c.name} · ${c.sysDependent?(c.sysName?.[state.sys]||state.sys):'umum'} · ${c.std||'SNI 2847:2019'}`;
   document.getElementById('syslabel').textContent=c.sysDependent?(c.sysText?.[state.sys]||SYS_TEXT[state.sys]):'Komponen ini tidak bergantung pada sistem rangka. Detailingnya sama untuk SRPMB dan SRPMK.';
@@ -447,6 +489,8 @@ document.getElementById('nav').addEventListener('click',e=>{
 function presetMenu(open,focus=true){
   const m=document.getElementById('presetMenu'), btn=document.getElementById('presetBtn'); if(!m) return;
   m.hidden=!open; btn.setAttribute('aria-expanded',String(open));
+  if(open){ const r=btn.getBoundingClientRect(), w=Math.max(r.width+12,250), x=Math.max(8,Math.min(r.left-6,innerWidth-w-8));
+    const below=innerHeight-r.bottom-12, h=m.scrollHeight; m.style.cssText=`left:${x}px;width:${w}px;`+(below<h&&r.top>below?`bottom:${innerHeight-r.top+5}px`:`top:${r.bottom+5}px`); }
   if(open&&focus) (m.querySelector('[aria-selected=true]')||m.firstElementChild).focus();
 }
 function applyPreset(id){
@@ -454,6 +498,8 @@ function applyPreset(id){
   seqClose(); Object.assign(comboP(),pr.set); renderNav(); update(true); document.getElementById('presetBtn')?.focus();
 }
 document.addEventListener('pointerdown',e=>{ const m=document.getElementById('presetMenu'); if(m&&!m.hidden&&!e.target.closest('.psel')) presetMenu(false); });
+document.getElementById('nav').addEventListener('scroll',e=>{ const m=document.getElementById('presetMenu'); if(m&&!m.hidden&&!m.contains(e.target)) presetMenu(false,false); },true);
+window.addEventListener('resize',()=>{ const m=document.getElementById('presetMenu'); if(m&&!m.hidden) presetMenu(false,false); });
 document.getElementById('nav').addEventListener('keydown',e=>{
   const m=document.getElementById('presetMenu'); if(!m) return;
   if(e.target.id==='presetBtn'&&(e.key==='ArrowDown'||e.key==='ArrowUp')){ e.preventDefault(); presetMenu(true); return; }
@@ -467,18 +513,24 @@ document.getElementById('nav').addEventListener('keydown',e=>{
 document.getElementById('nav').addEventListener('change',e=>{
   const k=e.target.dataset?.tg; if(!k) return; const p=comboP(), on=e.target.checked;
   p[k]=on; if(on) gabungan.combo.excl.forEach(pair=>{ if(pair.includes(k)) pair.forEach(x=>{ if(x!==k) p[x]=false; }); });
-  renderNav(); update(false);
+  // Switch dibiarkan beranimasi dulu; membangun model baru ditunda sampai frame berikutnya selesai digambar.
+  // Klik yang datang beruntun digabung menjadi satu kali bangun ulang.
+  e.target.closest('.tgl')?.classList.add('busy'); scheduleCombo();
 });
+// setTimeout, bukan requestAnimationFrame, supaya tetap berjalan di tab latar. Jeda ini cukup untuk satu atau dua frame
+// animasi switch tergambar lebih dulu.
+let comboT=0;
+function scheduleCombo(){ clearTimeout(comboT); comboT=setTimeout(()=>{ renderNav(); update(false); },110); }
 document.getElementById('nav').addEventListener('input',e=>{ if(e.target.id!=='navQ') return; navQ=e.target.value; applyNavFilter(); });
 document.getElementById('nav').addEventListener('keydown',e=>{ if(e.target.id!=='navQ') return;
   if(e.key==='Escape'){ navQ=''; e.target.value=''; applyNavFilter(); }
   else if(e.key==='Enter'){ const first=[...document.querySelectorAll('#nav [data-q]')].find(el=>!el.hidden); if(!first) return;
     if(first.dataset.comp){ navQ=''; goComp(first.dataset.comp); } else first.querySelector('input:not(:disabled)')?.click(); } });
-document.getElementById('tabs').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; document.querySelectorAll('#tabs button').forEach(x=>x.classList.toggle('on',x===b)); document.querySelectorAll('.pane').forEach(p=>p.classList.toggle('on',p.id==='pane-'+b.dataset.tab)); });
+document.getElementById('tabs').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; document.querySelectorAll('#tabs button').forEach(x=>x.classList.toggle('on',x===b)); document.querySelectorAll('.pane').forEach(p=>p.classList.toggle('on',p.id==='pane-'+b.dataset.tab)); if(b.dataset.tab==='gambar'&&drawDirty) renderDrawings(model); });
 const bindRange=(id,k)=>{ const el=document.getElementById(id); el.addEventListener('input',e=>{ V()[k]=Number(e.target.value); applyView(); }); el.addEventListener('change',save); };
 const syncSliders=()=>{ const v=V(); for(const k of ['xray','cut','explode']) document.getElementById(k).value=v[k]; };
 bindRange('xray','xray'); bindRange('cut','cut'); bindRange('explode','explode');
-document.getElementById('labelsOn').onchange=e=>{state.view.labels=e.target.checked;};
+document.getElementById('labelsOn').onchange=e=>{state.view.labels=e.target.checked; invalidate();};
 document.getElementById('resetCam').onclick=fitCamera;
 
 /* ===== tautan berbagi: komponen, sistem rangka, parameter yang diubah, dan lapisan disimpan di URL ===== */
@@ -524,8 +576,10 @@ function isTyping(el){ if(!el) return false; if(el.isContentEditable||/^(SELECT|
 { let lo=null; try{ lo=localStorage.getItem('atlas-tulangan-legend'); }catch(e){} document.getElementById('legend').classList.toggle('open',lo===null?!matchMedia('(max-width: 980px)').matches:lo==='1'); }
 /* ===== panel kiri dan kanan bisa disembunyikan ===== */
 const PANELS={nav:{cls:'hide-nav',btn:'tglNav',nama:'daftar komponen'},side:{cls:'hide-side',btn:'tglSide',nama:'panel konfigurasi'}};
+let panT=0;
 function setPanel(k,show,store=true){
   const P=PANELS[k], b=document.getElementById(P.btn);
+  if(store){ document.body.classList.add('panel-anim'); clearTimeout(panT); panT=setTimeout(()=>{ document.body.classList.remove('panel-anim'); resize(); },300); }
   document.body.classList.toggle(P.cls,!show);
   b.setAttribute('aria-expanded',String(show));
   const t=`${show?'Sembunyikan':'Tampilkan'} ${P.nama}`; b.setAttribute('aria-label',t); b.title=`${t} ( ${k==='nav'?'[':']'} )`;
@@ -543,6 +597,6 @@ try{ const ly=JSON.parse(localStorage.getItem('atlas-tulangan-layout')||'null');
 renderNav(); resize(); update(true);
 if(sharedOpen) setTimeout(()=>toast('Membuka model dari tautan berbagi.'),300);
 window.addEventListener('hashchange',()=>{ const h=(location.hash||'').slice(1); if(COMPS[h]&&h!==state.comp){ state.comp=h; renderNav(); update(true); } });
-window.__atlas={state,update,camera,get pickables(){return pickables;},COMPS,
+window.__atlas={state,update,camera,get timing(){return timing;},get pickables(){return pickables;},COMPS,
   // kait pengujian: memajukan animasi urutan tanpa menunggu frame (berguna saat tab di latar)
   seq:{state:seq,tick:t=>{ tweenStep(t); seqTick(t); },open:seqOpen,close:seqClose,go:seqGo,get staged(){return staged;}}};
