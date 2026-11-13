@@ -106,21 +106,23 @@ function concreteMesh(c){
 }
 
 const root=new THREE.Group(); scene.add(root);
-let groups={}, pickables=[], labels=[], model=null, selected=null, cutRange=null, layerDefs=[];
+let staged=[], groups={}, pickables=[], labels=[], model=null, selected=null, cutRange=null, layerDefs=[];
 
 function clearRoot(){ root.traverse(o=>{ if(o.geometry) o.geometry.dispose(); }); root.clear(); }
 function build3D(m){
-  clearRoot(); pickables=[]; groups={};
+  clearRoot(); pickables=[]; groups={}; staged=[]; seq.tw=null;
   const G=k=>groups[k]??=(()=>{const g=new THREE.Group(); g.name=k; root.add(g); return g;})();
-  m.concrete.forEach(c=>G(c.layer||'beton').add(concreteMesh(c)));
+  m.concrete.forEach(c=>{ const mesh=concreteMesh(c); if(c.stage!=null){ mesh.userData.stage=c.stage; mesh.userData.pour=true; staged.push(mesh); } G(c.layer||'beton').add(mesh); });
   (m.zones||[]).forEach(z=>G('zona').add(boxMesh(z.box,zoneMat(z.color),false)));
-  m.bars.forEach(b=>{ const mesh=tube(b.pts,b.d,matOf(b.color),b.maxSeg); mesh.userData={info:b.info,base:mesh.material}; pickables.push(mesh); G(b.layer).add(mesh); });
+  m.bars.forEach(b=>{ const mesh=tube(b.pts,b.d,matOf(b.color),b.maxSeg); mesh.userData={info:b.info,base:mesh.material}; if(b.stage!=null){ mesh.userData.stage=b.stage; staged.push(mesh); } pickables.push(mesh); G(b.layer).add(mesh); });
   labels=m.labels||[];
   layerDefs=[{k:'beton',label:'Beton',color:'#c9c4b8',ex:m.betonEx||[0,0,0]},...m.layers.filter(l=>groups[l.k]),...((m.zones||[]).length?[{k:'zona',label:'Zona daerah khusus',color:'#0f766e',ex:m.betonEx||[0,0,0],zone:true}]:[])];
   // rentang potong
   const bb=new THREE.Box3().setFromObject(root); const ax=m.cutAxis||'x';
   cutRange={axis:ax,min:bb.min[ax],max:bb.max[ax]};
   renderLayers(); applyView();
+  if(!m.stages){ seq.on=false; seq.playing=false; } else seq.step=Math.min(seq.step,m.stages.length-1);
+  seqApply(false);
 }
 // Bila area 3D sedang berukuran nol (tab di latar, panel tersembunyi), aspect = 0/0 = NaN dan posisi kamera ikut NaN.
 // Render lalu gagal setiap frame dan model tampak membeku, jadi penyesuaian kamera ditunda sampai ukurannya nyata.
@@ -151,6 +153,7 @@ function drawLabels(){
   const w=view.clientWidth,h=view.clientHeight; let html='';
   for(const L of labels){
     _v.set(L.p[0]*S,L.p[1]*S,L.p[2]*S);
+    if(seq.on&&L.stage!=null&&L.stage>seq.step) continue;
     const g=groups[L.follow||'beton']; if(L.follow!==null && g){ if(!g.visible && L.follow) continue; _v.add(g.position); }
     if(clip.distanceToPoint(_v)<0) continue;
     _v.project(camera); if(_v.z>1) continue;
@@ -186,6 +189,71 @@ const pasalTxt=p=>p==='praktik'?'Praktik umum, bukan pasal SNI':/^(Pasal|Tabel)\
 function resize(){ const w=view.clientWidth,h=view.clientHeight; if(!w||!h) return; renderer.setPixelRatio(Math.min(2,window.devicePixelRatio)); renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix(); if(fitPending&&model) fitCamera(); }
 new ResizeObserver(resize).observe(view);
 (function watchDPR(){ matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`).addEventListener('change',()=>{ resize(); watchDPR(); },{once:true}); })();
+/* ===== animasi urutan pelaksanaan (komponen yang punya model.stages) ===== */
+// Objek bertahap disembunyikan sampai tahapnya tiba. Tulangan turun ke posisinya; beton dan bata "dicor" naik dari bawah
+// memakai bidang potong horizontal tambahan (pourPlane) pada salinan material.
+const seq={on:false,step:0,playing:false,tw:null,doneAt:0,dur:3000,lastTw:1000};
+try{ const d=Number(localStorage.getItem('atlas-tulangan-seqdur')); if(d>=1500&&d<=8000) seq.dur=d; }catch(e){}
+const pourPlane=new THREE.Plane(new THREE.Vector3(0,-1,0),0), pourCache=new Map();
+const pourMatOf=m=>{ if(!pourCache.has(m)){ const c=m.clone(); c.clippingPlanes=[clip,pourPlane]; pourCache.set(m,c); } const c=pourCache.get(m); c.opacity=m.opacity; c.depthWrite=m.depthWrite; return c; };
+function finishTween(){ const tw=seq.tw; if(!tw) return; tw.bars.forEach(o=>o.position.y=0);
+  tw.pours.forEach(o=>{ if(o.userData.mat0){ o.material=o.userData.mat0; o.userData.mat0=null; } o.children.forEach(ch=>ch.visible=true); }); seq.tw=null; seq.doneAt=performance.now(); }
+function startTween(){
+  const cur=staged.filter(o=>o.userData.stage===seq.step), bars=cur.filter(o=>!o.userData.pour), pours=cur.filter(o=>o.userData.pour);
+  const bb=new THREE.Box3(); let y0=Infinity,y1=-Infinity;
+  pours.forEach(o=>{ bb.setFromObject(o); y0=Math.min(y0,bb.min.y); y1=Math.max(y1,bb.max.y); o.userData.mat0=o.material; o.material=pourMatOf(o.material); o.children.forEach(ch=>ch.visible=false); });
+  const R=new THREE.Box3().setFromObject(root).getBoundingSphere(new THREE.Sphere()).radius||1;
+  const dur=pours.length?Math.min(1700,seq.dur*0.55):Math.min(1100,seq.dur*0.4); seq.lastTw=dur;
+  seq.tw={t0:performance.now(),dur,bars,pours,y0,y1,drop:R*0.35};
+  bars.forEach(o=>o.position.y=seq.tw.drop); if(pours.length) pourPlane.constant=y0;
+}
+function tweenStep(now){
+  const tw=seq.tw; if(!tw) return; const k=Math.min(1,(now-tw.t0)/tw.dur), e=1-Math.pow(1-k,3);
+  tw.bars.forEach(o=>o.position.y=(1-e)*tw.drop);
+  if(tw.pours.length) pourPlane.constant=tw.y0+(tw.y1-tw.y0)*e+1e-4;
+  if(k>=1) finishTween();
+}
+function seqApply(animate){
+  finishTween();
+  for(const o of staged) o.visible=!seq.on||o.userData.stage<=seq.step;
+  if(seq.on&&animate) startTween();
+  renderSeqUI();
+}
+function seqGo(step,animate=true){ const n=model?.stages?.length||0; if(!n) return; seq.step=Math.max(0,Math.min(n-1,step)); seqApply(animate); }
+function seqOpen(){ if(!model?.stages) return; seq.on=true; seq.playing=true; seqGo(0); }
+function seqClose(){ seq.on=false; seq.playing=false; seqApply(false); }
+function seqTick(now){ if(seq.on&&seq.playing&&!seq.tw&&now-seq.doneAt>Math.max(350,seq.dur-seq.lastTw)){ const n=model.stages.length; if(seq.step<n-1) seqGo(seq.step+1); else { seq.playing=false; renderSeqUI(); } } }
+function renderSeqUI(){
+  const st=model?.stages, bar=document.getElementById('seqbar'), btn=document.getElementById('seqBtn');
+  btn.hidden=!st; btn.setAttribute('aria-pressed',String(!!(st&&seq.on))); bar.hidden=!(st&&seq.on); if(!st||!seq.on) return;
+  const n=st.length, cur=st[seq.step];
+  document.getElementById('sqStep').textContent=`Tahap ${seq.step+1} dari ${n}`;
+  document.getElementById('sqTitle').textContent=cur.t; document.getElementById('sqDesc').textContent=cur.d;
+  const dots=document.getElementById('sqDots');
+  if(dots.childElementCount!==n) dots.innerHTML=st.map((s,i)=>`<button data-i="${i}" title="${i+1}. ${s.t}" aria-label="Tahap ${i+1}: ${s.t}"></button>`).join('');
+  [...dots.children].forEach((b,i)=>{ b.classList.toggle('done',i<seq.step); b.classList.toggle('cur',i===seq.step); });
+  const pl=document.getElementById('sqPlay'); pl.classList.toggle('playing',seq.playing); pl.setAttribute('aria-label',seq.playing?'Jeda':'Putar');
+  document.getElementById('sqDur').value=seq.dur/1000; document.getElementById('sqDurV').textContent=`${(seq.dur/1000).toLocaleString('id-ID')} dtk`;
+}
+document.getElementById('seqBtn').onclick=e=>{ e.currentTarget.blur(); seq.on?seqClose():seqOpen(); };
+document.getElementById('sqClose').onclick=seqClose;
+document.getElementById('sqDots').addEventListener('click',e=>{ const b=e.target.closest('button[data-i]'); if(!b) return; seq.playing=false; seqGo(Number(b.dataset.i)); });
+document.getElementById('sqPlay').onclick=e=>{ e.currentTarget.blur(); const n=model.stages.length; if(seq.playing){ seq.playing=false; renderSeqUI(); return; } seq.playing=true; if(seq.step>=n-1) seqGo(0); else { seq.doneAt=0; renderSeqUI(); } };
+document.getElementById('sqDur').addEventListener('input',e=>{ seq.dur=Number(e.target.value)*1000; try{ localStorage.setItem('atlas-tulangan-seqdur',String(seq.dur)); }catch(_){} renderSeqUI(); });
+
+/* ===== panel Tampilan: dilipat ke atas seperti legenda ===== */
+{ const tp=document.getElementById('tampil'), tg=document.getElementById('tpToggle'); let o=null; try{ o=localStorage.getItem('atlas-tulangan-tampilan'); }catch(e){}
+  const set=open=>{ tp.classList.toggle('open',open); tg.setAttribute('aria-expanded',String(open)); };
+  set(o===null?!matchMedia('(max-width: 980px)').matches:o==='1');
+  tg.onclick=()=>{ const open=!tp.classList.contains('open'); set(open); try{ localStorage.setItem('atlas-tulangan-tampilan',open?'1':'0'); }catch(e){} }; }
+
+/* ===== tema: otomatis (ikut sistem), terang, atau gelap ===== */
+{ const btn=document.getElementById('themeBtn'), NAMA={auto:'otomatis',light:'terang',dark:'gelap'}, NEXT={auto:'light',light:'dark',dark:'auto'};
+  const apply=m=>{ if(m==='auto') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme=m;
+    btn.dataset.mode=m; btn.title=`Tema: ${NAMA[m]}`; btn.setAttribute('aria-label',`Ganti tema, saat ini ${NAMA[m]}`); };
+  let m='auto'; try{ m=localStorage.getItem('atlas-tulangan-theme')||'auto'; }catch(e){} apply(NAMA[m]?m:'auto');
+  btn.onclick=()=>{ const n=NEXT[btn.dataset.mode]; apply(n); try{ localStorage.setItem('atlas-tulangan-theme',n); }catch(e){} }; }
+
 /* ===== mode jelajah: WASD seperti orang pertama ===== */
 const fly={on:false,keys:new Set(),drag:null,mul:1,base:1,dist:3}, clock=new THREE.Clock(), _f=new THREE.Vector3(), _r=new THREE.Vector3(), UP=new THREE.Vector3(0,1,0);
 const flyBtn=document.getElementById('flyBtn');
@@ -202,7 +270,7 @@ const MOVE={KeyW:1,KeyA:1,KeyS:1,KeyD:1,KeyQ:1,KeyE:1,Space:1,ArrowUp:1,ArrowDow
 window.addEventListener('keydown',e=>{
   if(e.ctrlKey||e.metaKey||e.altKey||isTyping(e.target)) return;
   if(e.code==='KeyF'){ setFly(!fly.on); return; }
-  if(!fly.on) return;
+  if(!fly.on){ if(seq.on&&(e.code==='ArrowRight'||e.code==='ArrowLeft')){ seq.playing=false; seqGo(seq.step+(e.code==='ArrowRight'?1:-1),e.code==='ArrowRight'); e.preventDefault(); } return; }
   if(e.code==='Escape'){ setFly(false); return; }
   if(MOVE[e.code]){ fly.keys.add(e.code); e.preventDefault(); const ae=document.activeElement; if(ae&&ae!==document.body) ae.blur(); }
 });
@@ -223,7 +291,7 @@ function flyStep(dt){
   camera.position.addScaledVector(_f,fw*sp).addScaledVector(_r,rt*sp).addScaledVector(UP,upd*sp);
 }
 let lastErr='';
-renderer.setAnimationLoop(()=>{ try{ const dt=Math.min(clock.getDelta(),0.1); if(fly.on) flyStep(dt); else controls.update(); renderer.render(scene,camera); drawLabels(); }
+renderer.setAnimationLoop(()=>{ try{ const dt=Math.min(clock.getDelta(),0.1), now=performance.now(); tweenStep(now); seqTick(now); if(fly.on) flyStep(dt); else controls.update(); renderer.render(scene,camera); drawLabels(); }
   catch(err){ if(String(err)!==lastErr){ lastErr=String(err); console.error('Gagal merender frame:',err); } } });
 
 /* ===== UI ===== */
@@ -348,4 +416,6 @@ try{ const ly=JSON.parse(localStorage.getItem('atlas-tulangan-layout')||'null');
 
 renderNav(); resize(); update(true);
 window.addEventListener('hashchange',()=>{ const h=(location.hash||'').slice(1); if(COMPS[h]&&h!==state.comp){ state.comp=h; renderNav(); update(true); } });
-window.__atlas={state,update,camera,get pickables(){return pickables;},COMPS};
+window.__atlas={state,update,camera,get pickables(){return pickables;},COMPS,
+  // kait pengujian: memajukan animasi urutan tanpa menunggu frame (berguna saat tab di latar)
+  seq:{state:seq,tick:t=>{ tweenStep(t); seqTick(t); },open:seqOpen,close:seqClose,go:seqGo,get staged(){return staged;}}};

@@ -33,21 +33,24 @@ export default {
     const yBKtop=p.sloof?-hs:0, hBK=600;
     const yW0=0, yW1=p.balok?Hk-hb:p.pelat?Hk-tp:Hk-150;
     const concrete=[], bars=[], labels=[], {C,add}=checker();
-    const push=(pts,d,layer,color,info)=>bars.push({pts,d,layer,color,info});
+    // tahap pelaksanaan: setiap objek diberi kunci tahap; dipetakan ke nomor urut di akhir build
+    const STL={fondasi:'fk1',sloof:'s1',kolom:'k1',kolomS:'k1',hbk:'bp1',balok:'bp1',balokS:'bp1',pelat:'bp1',kp:'kp',angkur:'bata'};
+    const push=(pts,d,layer,color,info,stage)=>bars.push({pts,d,layer,color,info,stage:stage||STL[layer]});
+    const cp=(stage,...items)=>concrete.push(...items.map(o=>({...o,stage})));
     // ---------- fondasi kolom ----------
     if(fk==='telapak') xs.forEach(xc=>{
-      concrete.push({box:[xc-Bf/2,xc+Bf/2,yFbot,yFtop,-Bf/2,Bf/2]});
+      cp('fk2',{box:[xc-Bf/2,xc+Bf/2,yFbot,yFtop,-Bf/2,Bf/2]});
       const dm=13, a=Bf/2-75-dm/2, inf={t:'Tulangan bawah fondasi telapak D13-150',b:['Anyaman dua arah, ujung dibengkokkan ke atas.'],pasal:'Pasal 13.3'};
       const up=(L,y)=>{ const t=turtle(-L,y+150,-PI/2); t.fwd(150-39).turn(90,39).fwd(2*L-78).turn(90,39).fwd(150-39); return t.pts; };
       spread(-a,a,150).forEach(z=>push(up(a,yFbot+75+dm/2).map(([u,y])=>[xc+u,y,z]),dm,'fondasi',COL.matA,inf));
       spread(-a+dm,a-dm,150).forEach(x=>push(up(a-dm,yFbot+75+dm*1.5).map(([u,y])=>[xc+x,y,u]),dm,'fondasi',COL.matB,inf));
     });
     if(fk==='tiang') xs.forEach(xc=>{
-      concrete.push({box:[xc-capX/2,xc+capX/2,yFbot,yFtop,-capZ/2,capZ/2]});
+      cp('fk2',{box:[xc-capX/2,xc+capX/2,yFbot,yFtop,-capZ/2,capZ/2]});
       const dm=16, inf={t:'Tulangan bawah pile cap D16-150',b:['Pengikat tarik antar kepala tiang.'],pasal:'Pasal 13.4'};
       spread(-capZ/2+90,capZ/2-90,150).forEach(z=>push([[xc-capX/2+90,yFbot+100,z],[xc+capX/2-90,yFbot+100,z]],dm,'fondasi',COL.matA,inf));
       spread(-capX/2+90,capX/2-90,150).forEach(x=>push([[xc+x,yFbot+100+dm,-capZ/2+90],[xc+x,yFbot+100+dm,capZ/2-90]],dm,'fondasi',COL.matB,inf));
-      [-spP/2,spP/2].forEach(zc=>{ const y0=yFbot-2500, y1=yFbot+75; concrete.push({cyl:{x:xc,z:zc,r:Dp/2,y0,y1}});
+      [-spP/2,spP/2].forEach(zc=>{ const y0=yFbot-2500, y1=yFbot+75; cp('fk2',{cyl:{x:xc,z:zc,r:Dp/2,y0,y1}});
         const Rb=Dp/2-75-10-6.5, Rs=Dp/2-75-5, ld=devLen(420,30,13), iP={t:'Tulangan tiang 6D13',b:[`Diteruskan ke pile cap sepanjang ℓd = ${fmt(ld)} mm.`],pasal:K?'Pasal 18.13.4.1':'Tabel 25.4.2.2'};
         for(let i=0;i<6;i++){ const t=2*PI*i/6; push([[xc+Rb*Math.cos(t),y0+100,zc+Rb*Math.sin(t)],[xc+Rb*Math.cos(t),Math.min(yFtop-80,y1+ld),zc+Rb*Math.sin(t)]],13,'fondasi',COL.long,iP); }
         const pitch=K?75:150, turns=(y1-y0-150)/pitch, n=Math.ceil(turns*20), sp=[]; for(let k=0;k<=n;k++){ const th=2*PI*turns*k/n; sp.push([xc+Rs*Math.cos(th),y1-30-(y1-y0-150)*k/n,zc+Rs*Math.sin(th)]); }
@@ -58,12 +61,12 @@ export default {
     if(p.batukali){
       bkX0=fk==='telapak'?Bf/2+50:fk==='tiang'?capX/2+50:-300; bkX1=Lb-bkX0;
       const a=300, B=600, wT=y=>B+(a-B)*(y-(yBKtop-hBK))/hBK;
-      concrete.push({prism:{axis:'x',pts:trapesium(a,B,yBKtop,hBK),x0:bkX0,x1:bkX1},mat:'spesi',layer:'batukali'},
+      cp('bk',{prism:{axis:'x',pts:trapesium(a,B,yBKtop,hBK),x0:bkX0,x1:bkX1},mat:'spesi',layer:'batukali'},
         {rocks:rubble({axis:'x',a0:bkX0,a1:bkX1,y0:yBKtop-hBK,y1:yBKtop,width:wT,size:200,gap:25,seed:3}),mat:'batu',layer:'batukali'},
         {rocks:rubble({axis:'x',a0:bkX0,a1:bkX1,y0:yBKtop-hBK-150,y1:yBKtop-hBK,width:()=>B,size:200,gap:15,tegak:true,seed:9}),mat:'aanstamping',layer:'batukali'});
-      labels.push({p:[(bkX0+bkX1)/2,yBKtop-hBK/2,B/2+40],t:'fondasi batu kali'});
+      labels.push({p:[(bkX0+bkX1)/2,yBKtop-hBK/2,B/2+40],t:'fondasi batu kali',stage:'bk'});
       if(p.sloof){ const iA={t:'Angkur sloof ke batu kali D10',b:['Ditanam di pasangan batu kali dan masuk ke sloof, jarak paling jauh 1 m.'],pasal:PU};
-        spread(bkX0+200,bkX1-200,1000).forEach(x=>{ const t=turtle(x,yBKtop-300,PI/2); t.fwd(300+hs-COV-ds-dbs-60).turn(-90,20).fwd(80); push(t.pts.map(([xx,y])=>[xx,y,0]),10,'angkur',COL.dowel,iA); }); }
+        spread(bkX0+200,bkX1-200,1000).forEach(x=>{ const t=turtle(x,yBKtop-300,PI/2); t.fwd(300+hs-COV-ds-dbs-60).turn(-90,20).fwd(80); push(t.pts.map(([xx,y])=>[xx,y,0]),10,'angkur',COL.dowel,iA,'bk'); }); }
     }
     // ---------- kolom struktur ----------
     const cg=rectCage({B:bc,H:bc,cover:COV,ds,db:dbk,nu:nc,nv:nc,hook,allSup:K});
@@ -72,7 +75,7 @@ export default {
       const topHook=p.balok||p.pelat, yBarT=Hk-COV-ds-dbb-dbk/2, Lh=12*dbk, r=4*dbk;
       const iC={t:`Tulangan kolom ${cg.pos.length}D${dbk}`,b:[fk!=='none'?`Diteruskan ke ${fk==='telapak'?'fondasi telapak':'pile cap'} dengan kait 90° ${K?'ke arah sumbu kolom':'ke arah luar'}.`:'Tanpa fondasi kolom.',topHook?'Di lantai teratas dibengkokkan 90° ke dalam joint.':''],pasal:K?'Pasal 18.13.2.2, 18.7.4':'Pasal 10.7'};
       xs.forEach((xc,ic)=>{
-        concrete.push({box:[xc-bc/2,xc+bc/2,yCB,Hk,-bc/2,bc/2]});
+        cp('k2',{box:[xc-bc/2,xc+bc/2,yCB,Hk,-bc/2,bc/2]});
         cg.pos.forEach(([u,v])=>{
           const sgn=Math.abs(u)>1?Math.sign(u):(ic===0?-1:1), dirB=fk==='none'?0:(K?-sgn:sgn), dirT=topHook?-sgn:0;
           const t=dirB?turtle(xc+u+dirB*Lh,yBarB,dirB>0?PI:0):turtle(xc+u,yBarB,PI/2);
@@ -89,12 +92,12 @@ export default {
         const iH=z=>({t:z==='joint'?`Sengkang joint D${ds}-${sJ}`:`Sengkang kolom D${ds}`,b:[z==='joint'?(K?'Hubungan balok-kolom SRPMK: sama dengan daerah ℓo (Pasal 18.8.3.1).':'Joint SRPMB: disebar sepanjang tinggi balok dengan spasi ≤ h/2 (Pasal 15.4.2).'):z==='conf'?`Daerah ℓo = ${fmt(lo)} mm, spasi ${sLo} mm.`:'Daerah tengah kolom.'],pasal:z==='joint'?(K?'Pasal 18.8.3.1':'Pasal 15.4.2'):K?'Pasal 18.7.5':'Pasal 25.7.2'});
         ys.forEach(({y,z})=>{ push(lift3D(cg.hoop,(u,v,w)=>[xc+u,y+w,v],ds*1.05),ds,z==='joint'?'hbk':'kolomS',z==='joint'?COL.webH:COL[z],iH(z)); cg.ties.forEach(t=>push(t.pts.map(([u,v])=>[xc+u,y+ds*1.1,v]),ds,z==='joint'?'hbk':'kolomS',COL.tie,iH(z))); });
       });
-      labels.push({p:[0,Hk*0.5,bc/2+40],t:'kolom struktur'});
+      labels.push({p:[0,Hk*0.5,bc/2+40],t:'kolom struktur',stage:'k2'});
     }
     // ---------- balok ----------
     if(p.balok){
       const x0=p.kolom?fx0:-200, x1=p.kolom?fx1:Lb+200;
-      concrete.push({box:[x0,x1,Hk-hb,Hk,-b/2,b/2]});
+      cp('bp2',{box:[x0,x1,Hk-hb,Hk,-b/2,b/2]});
       const zl=b/2-COV-ds-dbb/2, yT=Hk-COV-ds-dbb/2-(p.kolom?dbk:0), yB=Hk-hb+COV+ds+dbb/2+(p.kolom?dbk:0), rb=3.5*dbb, tail=12*dbb;
       const xa=p.kolom?-bc/2+COV+ds+dbk+dbb*1.5:x0+30, xb=Lb-xa;
       const ldh=(K?ldhSeis:ldhGen)(420,30,dbb), iB={t:`Tulangan balok 3D${dbb} atas dan bawah`,b:[p.kolom?`Dibengkokkan 90° ke dalam kolom dengan ekor 12db; ℓdh perlu ${fmt(ldh)} mm.`:'Tanpa kolom penumpu.'],pasal:K?'Pasal 18.8.5':'Pasal 25.4.3'};
@@ -106,7 +109,7 @@ export default {
       const sC=K?Math.min(100,Math.floor(Math.min(d/4,6*dbb,150)/5)*5):150, sM=K?150:Math.min(150,Math.floor(d/2/5)*5);
       const posB=[]; for(let x=x0+50;x<=x1-50;){ const c=K&&(x<x0+z2||x>x1-z2); posB.push({x,c}); x+=c?sC:sM; }
       posB.forEach(({x,c})=>push(lift3D(hp,(u,v,w)=>[x+w,Hk-hb/2+v,u],ds*1.05),ds,'balokS',c?COL.conf:COL.mid,{t:`Sengkang balok D${ds}-${c?sC:sM}`,b:[c?'Daerah 2h dari muka kolom (Pasal 18.6.4.4).':'Daerah lapangan.'],pasal:K?(c?'Pasal 18.6.4.4':'Pasal 18.6.4.6'):'Tabel 9.7.6.2.2'}));
-      labels.push({p:[Lb/2,Hk+80,b/2],t:'balok'});
+      labels.push({p:[Lb/2,Hk+80,b/2],t:'balok',stage:'bp2'});
       if(p.kolom){ const avail=bc-COV; add(ldh<=avail,'Kait tulangan balok di dalam kolom',`ℓdh = ${fmt(ldh)} mm ≤ tersedia ${fmt(avail)} mm`,K?'Pasal 18.8.5.1':'Pasal 25.4.3.1');
         if(K) add(bc>=20*dbb,'Kolom terhadap diameter tulangan balok',`hc = ${bc} mm ≥ 20db = ${20*dbb} mm`,'Pasal 18.8.2.3');
         add(true,'Sengkang di dalam joint',K?'diteruskan dengan spasi 100 mm sepanjang tinggi balok':`disebar sepanjang tinggi balok, spasi ≤ h/2 = ${fmt(hb/2)} mm`,K?'Pasal 18.8.3.1':'Pasal 15.4.2'); }
@@ -115,18 +118,18 @@ export default {
     // ---------- pelat ----------
     if(p.pelat){
       const px0=-bc/2-300, px1=Lb+bc/2+300, W=1500;
-      concrete.push({box:[px0,px1,Hk-tp,Hk,-W,W]});
+      cp('bp2',{box:[px0,px1,Hk-tp,Hk,-W,W]});
       const iP={t:'Tulangan pelat D10-150',b:['Tulangan bawah dua arah; tulangan atas melintang di atas balok untuk momen negatif.'],pasal:'Pasal 8.7.2'};
       spread(-W+50,W-50,150).forEach(z=>push([[px0+30,Hk-tp+25,z],[px1-30,Hk-tp+25,z]],10,'pelat',COL.matA,iP));
       spread(px0+50,px1-50,200).forEach(x=>push([[x,Hk-tp+35,-W+30],[x,Hk-tp+35,W-30]],10,'pelat',COL.matB,iP));
       spread(px0+75,px1-75,150).forEach(x=>push([[x,Hk-25,-1000],[x,Hk-25,1000]],10,'pelat',COL.matT,iP));
-      labels.push({p:[Lb/2,Hk+60,W*0.7],t:'pelat lantai'});
+      labels.push({p:[Lb/2,Hk+60,W*0.7],t:'pelat lantai',stage:'bp2'});
       if(!p.balok) add(null,'Pelat tanpa balok','pelat langsung bertumpu pada kolom; tebal minimum dan geser pons diperiksa terpisah','praktik');
     }
     // ---------- sloof ----------
     if(p.sloof){
       const x0=p.kolom?fx0:-300, x1=p.kolom?fx1:Lb+300;
-      concrete.push({box:[x0,x1,-hs,0,-bs/2,bs/2]});
+      cp('s2',{box:[x0,x1,-hs,0,-bs/2,bs/2]});
       const zl=bs/2-COV-ds-dbs/2, yT=-COV-ds-dbs/2-(p.kolom?dbk:0), yB=-hs+COV+ds+dbs/2+(p.kolom?dbk:0), rb=3*dbs, tail=12*dbs;
       const xa=p.kolom?-bc/2+COV+ds+dbk+dbs*1.5:x0+30, xb=Lb-xa;
       const iS={t:`Tulangan sloof 3D${dbs} atas dan bawah`,b:[p.kolom?'Diangkur ke dalam kolom dengan kait 90°.':'Sloof tanpa kolom struktur, berperan sebagai sloof praktis.',K?'Menerus dan disalurkan di setiap diskontinuitas (Pasal 18.13.3.1).':''],pasal:K?'Pasal 18.13.3.1':'Pasal 25.4.3'};
@@ -136,7 +139,7 @@ export default {
         push(t.pts.map(([x,yy])=>[x,yy,z]),dbs,'sloof',COL.bot,iS); }));
       const sS=K?Math.min(150,Math.floor(Math.min(bs,hs)/2/5)*5):150, ext=K?Math.max(6*ds,75):6*ds, hp=hoop2D(bs/2-COV-ds/2,hs/2-COV-ds/2,2.5*ds,hook,ext);
       spread(x0+50,x1-50,sS).forEach(x=>push(lift3D(hp,(u,v,w)=>[x+w,-hs/2+v,u],ds*1.05),ds,'sloof',COL.mid,{t:`Sengkang sloof D${ds}-${sS}`,b:[K?'Sengkang pengekang tertutup, spasi ≤ min(b/2; 300) (Pasal 18.13.3.2).':'Sengkang sloof.'],pasal:K?'Pasal 18.13.3.2':'Tabel 9.7.6.2.2'}));
-      labels.push({p:[Lb*0.3,-hs-40,bs/2],t:'sloof'});
+      labels.push({p:[Lb*0.3,-hs-40,bs/2],t:'sloof',stage:'s2'});
       if(K&&p.kolom){ const Lc=Lb-bc, dmin=Math.min(Lc/20,450); add(Math.min(bs,hs)>=dmin,'Dimensi sloof',`${Math.min(bs,hs)} mm ≥ min(ℓ bersih/20; 450) = ${fmt(dmin)} mm`,'Pasal 18.13.3.2'); }
       if(p.batukali) add(300>=bs,'Sloof di atas batu kali',`lebar atas batu kali 300 mm ${300>=bs?'≥':'<'} lebar sloof ${bs} mm`,'praktik');
     }
@@ -152,13 +155,13 @@ export default {
         const P0=posts[i], P1=posts[i+1], a0=P0.x+P0.w/2, a1=P1.x-P1.w/2;
         const w=bataWall({axis:'x',a0,a1,y0:yW0,y1:yW1,c:0,bt,joint:10,tooth0:P0.kp&&!bt.ringan?50:0,tooth1:P1.kp&&!bt.ringan?50:0});
         T=w.thick; nCourse=w.n; wInfo=w; areas.push((a1-a0)*(yW1-yW0)/1e6);
-        concrete.push({box:w.mortar,mat:'spesi',layer:'bata'},{boxes:w.boxes,mat:bt.ringan?'ringan':'bata',layer:'bata'});
+        cp('bata',{box:w.mortar,mat:'spesi',layer:'bata'},{boxes:w.boxes,mat:bt.ringan?'ringan':'bata',layer:'bata'});
       }
       // kolom praktis
       const iK={t:'Kolom praktis 4D10, sengkang D8-150',b:['Dicor setelah pasangan bata, mengunci gigi bata.',p.sloof||p.balok?'Tulangannya dibengkokkan ke sloof dan balok sepanjang 400 mm.':''],pasal:PU};
       const a=bk/2-CV_P-8-5, yB=p.sloof?-hs+COV+ds+dbs/2+dbs:yW0+40, yT=p.balok?Hk-hb+COV+ds+dbb+dbb:yW1-40;
       const hkp=hoop2D(bk/2-CV_P-4,bk/2-CV_P-4,16,135,50);
-      posts.filter(q=>q.kp).forEach(q=>{ concrete.push({box:[q.x-bk/2,q.x+bk/2,yW0,yW1,-bk/2,bk/2]});
+      posts.filter(q=>q.kp).forEach(q=>{ cp('kp',{box:[q.x-bk/2,q.x+bk/2,yW0,yW1,-bk/2,bk/2]});
         for(const u of [-a,a]) for(const z of [-a,a]){ const dir=u<0?-1:1;
           push((p.sloof&&p.balok?bentBar(q.x+u,yB,yT,dir,400,30):[[q.x+u,yB],[q.x+u,yT]]).map(([x,y])=>[x,y,z]),10,'kp',COL.long,iK); }
         spread(yW0+50,yW1-50,150).forEach(y=>push(lift3D(hkp,(u,v,w)=>[q.x+u,y+w,v],8.4),8,'kp',COL.mid,iK)); });
@@ -167,7 +170,7 @@ export default {
       const yA=[]; for(let k=5;k<nCourse;k+=6) yA.push(wInfo.courseY(k)+bt.t+5);
       posts.forEach((q,i)=>[[i>0,-1],[i<posts.length-1,1]].forEach(([ok,dir])=>{ if(!ok) return; const xs0=q.x-dir*(q.w/2-50);
         yA.forEach(y=>{ const t=turtle(xs0,y-60,PI/2); t.fwd(40).turn(dir>0?-90:90,20).fwd(400+q.w/2-70); push(t.pts.map(([x,yy])=>[x,yy,0]),10,'angkur',COL.dowel,iA); }); }));
-      labels.push({p:[Lb/2,yW1*0.45,T/2+30],t:'dinding bata'},...posts.filter(q=>q.kp).slice(0,1).map(q=>({p:[q.x,yW1*0.7,bk/2+30],t:'kolom praktis',c:'lap'})));
+      labels.push({p:[Lb/2,yW1*0.45,T/2+30],t:'dinding bata',stage:'bata'},...posts.filter(q=>q.kp).slice(0,1).map(q=>({p:[q.x,yW1*0.7,bk/2+30],t:'kolom praktis',c:'lap',stage:'kp'})));
       const amax=Math.max(...areas), lmax=Math.max(...posts.slice(1).map((q,i)=>q.x-q.w/2-(posts[i].x+posts[i].w/2)));
       add(amax<=9,'Luas bidang dinding per panel',`terbesar ${fmt(amax,2)} m² ≤ 9 m², ${areas.length} panel`,PU);
       add(lmax<=3000,'Jarak antar kolom pada dinding',`terbesar ${fmt(lmax)} mm ≤ 3.000 mm; ${posts.filter(q=>q.kp).length} kolom praktis disisipkan otomatis`,PU);
@@ -199,7 +202,24 @@ export default {
       {k:'hbk',label:'Sengkang joint (HBK)',color:COL.webH,ex:[0,0,0]},{k:'balok',label:'Tulangan balok',color:COL.top,ex:[0,450,0]},{k:'balokS',label:'Sengkang balok',color:COL.mid,ex:[0,450,0]},
       {k:'pelat',label:'Tulangan pelat',color:COL.matT,ex:[0,900,0]},{k:'bata',label:'Dinding bata',color:bt.ringan?MAT.ringan:MAT.bata,block:true,ex:[0,0,-1200]},
       {k:'kp',label:'Kolom praktis',color:COL.long,ex:[0,0,-1200]},{k:'angkur',label:'Angkur',color:COL.dowel,ex:[0,0,600]}];
-    return {layers,betonEx:[0,0,1800],concrete,zones:[],bars,labels,views,checks:C,derived,camDir:[0.55,0.35,0.95],camK:1.08,cutAxis:'x',
+    // ---------- urutan pelaksanaan ----------
+    const ORDER=[
+      ['fk1','Fondasi kolom: pembesian','Tanah digali dan lantai kerja dicor. Anyaman tulangan fondasi dipasang di atas beton decking; stek kolom diikat di atasnya dengan kait masuk ke fondasi.'],
+      ['fk2',fk==='tiang'?'Tiang bor dan pile cap: pengecoran':'Fondasi kolom: pengecoran',fk==='tiang'?'Tiang bor dicor lebih dulu. Kepala tiang dibobok sampai tulangannya terlihat, lalu pile cap dicor menyatu dengan tulangan tiang.':'Fondasi telapak dicor sampai elevasi rencana. Bekisting dibongkar setelah beton cukup kuat, lalu galian diurug kembali.'],
+      ['bk','Fondasi batu kali','Di antara fondasi kolom, pasir urug dihampar, aanstamping dipasang berdiri, lalu batu kali disusun dengan spesi. Angkur sloof ditanam di bagian atas pasangan.'],
+      ['s1','Sloof: pembesian','Tulangan sloof dirangkai di atas fondasi. Ujungnya dibengkokkan ke daerah kolom dan diikat ke stek kolom.'],
+      ['s2','Sloof: pengecoran','Bekisting sloof dipasang dan sloof dicor. Permukaan atas sloof menjadi peil lantai.'],
+      ['k1','Kolom: pembesian','Tulangan kolom disambung dari stek. Sengkang dipasang dengan jarak lebih rapat di ujung atas dan bawah kolom.'],
+      ['k2','Kolom: pengecoran','Bekisting kolom dipasang dan kolom dicor bertahap. Pada praktiknya pengecoran kolom berhenti di bawah balok; joint dicor bersama balok dan pelat.'],
+      ['bp1','Balok dan pelat: pembesian','Perancah dan bekisting balok serta pelat dipasang. Sengkang joint dipasang lebih dulu, lalu tulangan balok dimasukkan menembus joint, dan terakhir tulangan pelat dirangkai.'],
+      ['bp2','Balok dan pelat: pengecoran','Balok, pelat, dan joint dicor bersamaan dalam satu tahap, lalu dirawat beberapa hari sebelum perancah dibongkar.'],
+      ['bata','Pasangan dinding bata','Bata dipasang lapis demi lapis di atas sloof. Ujung pasangan dibuat bergigi di posisi kolom praktis, dan angkur dipasang di siar datar setiap 6 lapis.'],
+      ['kp','Kolom praktis','Tulangan kolom praktis sudah berdiri sejak sloof dicor. Setelah bata terpasang, bekisting dipasang dan kolom praktis dicor menempel pada gigi bata.']
+    ];
+    const present=new Set([...concrete,...bars,...labels].map(o=>o.stage).filter(Boolean));
+    const stages=ORDER.filter(([k])=>present.has(k)), sIdx=Object.fromEntries(stages.map(([k],i)=>[k,i]));
+    [...concrete,...bars,...labels].forEach(o=>{ if(o.stage) o.stage=sIdx[o.stage]; });
+    return {layers,betonEx:[0,0,1800],stages:stages.map(([,t,d])=>({t,d})),concrete,zones:[],bars,labels,views,checks:C,derived,camDir:[0.55,0.35,0.95],camK:1.08,cutAxis:'x',
       colorNote:`Sengkang: <b style="color:${COL.conf}">hijau</b> daerah kekang, <b style="color:${COL.mid}">biru</b> daerah biasa, <b style="color:${COL.webH}">biru terang</b> di dalam joint.`};
   }
 };
