@@ -83,7 +83,7 @@ nav button.on{background:var(--tint);color:#fff;font-weight:500}
 nav .note{font-size:12px;color:var(--label2);margin:18px 10px 0;line-height:1.45}
 
 /* ===== area 3D ===== */
-#view{position:relative;min-width:0;min-height:0;background:var(--canvas)}
+#view{position:relative;min-width:0;min-height:0;background:radial-gradient(70% 60% at 12% 8%,rgba(120,170,255,.28),transparent 60%),radial-gradient(60% 55% at 92% 95%,rgba(255,170,120,.22),transparent 60%),radial-gradient(50% 45% at 85% 10%,rgba(160,230,200,.18),transparent 60%),linear-gradient(180deg,#f4f6fa,#eceef3)}
 #view canvas{display:block;width:100%;height:100%;touch-action:none}
 #labels{position:absolute;inset:0;pointer-events:none;overflow:hidden}
 .lbl{position:absolute;transform:translate(-50%,-100%);font-size:11.5px;font-weight:500;background:rgba(255,255,255,.82);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
@@ -93,16 +93,44 @@ nav .note{font-size:12px;color:var(--label2);margin:18px 10px 0;line-height:1.45
 .lbl.mid{color:var(--mid);box-shadow:0 0 0 1px rgba(79,109,138,.45)}
 .lbl.dim{background:transparent;box-shadow:none;color:var(--label2);-webkit-backdrop-filter:none;backdrop-filter:none}
 .glass{background:var(--material);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);box-shadow:var(--shadow)}
-.toolbar{position:absolute;left:50%;transform:translateX(-50%);bottom:14px;max-width:calc(100% - 28px);display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;justify-content:center;
-  border-radius:var(--r-l);padding:9px 14px}
-.toolbar label{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--label2);white-space:nowrap}
+/* liquid glass: hanya untuk elemen yang melayang di atas model */
+.lg{--lg-a:.10;--lg-b:.04;
+  background:radial-gradient(130% 80% at 15% -10%,rgba(255,255,255,.55),rgba(255,255,255,0) 55%),linear-gradient(165deg,rgba(255,255,255,calc(var(--lg-a) + .14)),rgba(255,255,255,var(--lg-b)) 60%,rgba(255,255,255,calc(var(--lg-b) + .06)));
+  -webkit-backdrop-filter:blur(7px) saturate(210%) brightness(1.06);backdrop-filter:blur(7px) saturate(210%) brightness(1.06);
+  box-shadow:inset 0 1.5px 0 rgba(255,255,255,1),inset 0 -1px 1px rgba(255,255,255,.5),inset 0 0 18px rgba(255,255,255,.35),inset 0 -10px 18px -12px rgba(0,0,0,.10),0 0 0 .5px rgba(0,0,0,.10),0 14px 34px rgba(30,40,70,.16),0 3px 8px rgba(30,40,70,.08)}
+/* pembiasan (Chrome dan Edge): latar di balik kaca sedikit dibengkokkan. Browser lain memakai deklarasi blur di atas. */
+@supports (backdrop-filter:url(#lg-refract)){ .lg{backdrop-filter:url(#lg-refract) blur(5px) saturate(210%) brightness(1.06)} .lg.dense{backdrop-filter:url(#lg-refract) blur(9px) saturate(200%) brightness(1.04)} }
+.lg::after{content:'';position:absolute;inset:0;border-radius:inherit;padding:1.2px;pointer-events:none;
+  background:linear-gradient(150deg,rgba(255,255,255,1),rgba(255,255,255,.15) 35%,rgba(180,200,255,.25) 55%,rgba(255,255,255,.12) 70%,rgba(255,255,255,.85));
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0)}
+.lg.dense{--lg-a:.52;--lg-b:.38}
+.lg .btn{background:rgba(255,255,255,.5);border-radius:999px;box-shadow:inset 0 1px 0 rgba(255,255,255,.95),0 0 0 .5px rgba(0,0,0,.08),0 1px 3px rgba(0,0,0,.06)}
+.lg .btn:hover{background:rgba(255,255,255,.75)}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){ .lg{background:rgba(250,250,252,.96)} }
+@media (prefers-reduced-transparency: reduce){ .lg,.glass{background:rgba(250,250,252,.97);-webkit-backdrop-filter:none;backdrop-filter:none} }
+.toolbar{position:absolute;left:50%;transform:translateX(-50%);bottom:16px;max-width:calc(100% - 28px);display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;justify-content:center;
+  border-radius:26px;padding:9px 12px 9px 18px}
+.toolbar label{display:flex;align-items:center;gap:8px;font-size:13px;color:rgba(0,0,0,.72);white-space:nowrap}
 .toolbar input[type=range]{width:104px;accent-color:var(--tint)}
 .toolbar .btn{border:0;background:var(--fill);color:var(--tint);border-radius:var(--r-s);padding:5px 11px;cursor:pointer;font-size:13px;font-weight:500}
 .toolbar .btn:hover{background:rgba(118,118,128,.2)}
-.hint{position:absolute;top:12px;right:12px;font-size:12px;color:var(--label2);background:rgba(255,255,255,.6);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);padding:4px 10px;border-radius:999px}
+.flyhint{position:absolute;top:12px;left:50%;transform:translateX(-50%);display:none;align-items:center;gap:6px;flex-wrap:wrap;justify-content:center;max-width:calc(100% - 28px);font-size:12.5px;color:var(--label2);padding:7px 14px;border-radius:999px}
+.flyhint b{color:var(--label);font-weight:600;margin-right:4px}
+.flyhint kbd{font-family:var(--sans);font-size:11px;font-weight:600;color:var(--label);background:#fff;border-radius:5px;padding:1px 6px;box-shadow:0 0 0 .5px rgba(0,0,0,.15),0 1px 0 rgba(0,0,0,.12)}
+body.flying .flyhint{display:flex}
+body.flying .hint{display:none}
+body.flying #view canvas{cursor:crosshair}
+.crosshair{position:absolute;left:50%;top:50%;width:18px;height:18px;margin:-9px 0 0 -9px;pointer-events:none;display:none}
+.crosshair::before,.crosshair::after{content:'';position:absolute;background:#fff;box-shadow:0 0 0 1px rgba(0,0,0,.35)}
+.crosshair::before{left:8px;top:0;width:2px;height:18px}
+.crosshair::after{top:8px;left:0;width:18px;height:2px}
+body.flying.locked .crosshair{display:block}
+#flyBtn[aria-pressed=true]{background:var(--tint);color:#fff}
+@media (hover:none){ #flyBtn{display:none} }
+.hint{position:absolute;top:12px;right:12px;font-size:12px;color:rgba(0,0,0,.6);padding:5px 12px;border-radius:999px}
 
 /* legenda Lapisan */
-.legend{position:absolute;top:12px;left:12px;min-width:220px;max-width:260px;max-height:calc(100% - 96px);overflow:auto;border-radius:var(--r-l);padding:6px;font-size:13px;color:var(--label)}
+.legend{position:absolute;top:12px;left:12px;min-width:220px;max-width:260px;max-height:calc(100% - 96px);overflow:auto;border-radius:20px;padding:6px;font-size:13px;color:var(--label)}
 .legend .lh{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:2px 2px 2px 0}
 .legend .lt{display:flex;align-items:center;gap:4px;border:0;background:none;cursor:pointer;font-size:13px;font-weight:600;padding:5px 6px;border-radius:6px;color:var(--label)}
 .legend .lt:hover{background:var(--fill2)}
@@ -114,7 +142,7 @@ nav .note{font-size:12px;color:var(--label2);margin:18px 10px 0;line-height:1.45
 .legend:not(.open) .lb,.legend:not(.open) .lh span{display:none}
 .legend:not(.open){min-width:0}
 .legend .lb{padding:2px 4px 4px}
-.legend label{display:flex;align-items:center;gap:9px;cursor:pointer;padding:5px 4px;border-top:.5px solid var(--sep)}
+.legend label{display:flex;align-items:center;gap:9px;cursor:pointer;padding:5px 4px;border-top:.5px solid rgba(60,60,67,.12)}
 .legend label:first-child{border-top:0}
 .legend label span{flex:1}
 .legend label i{display:inline-block;width:16px;height:4px;border-radius:2px;flex:none}
@@ -122,7 +150,7 @@ nav .note{font-size:12px;color:var(--label2);margin:18px 10px 0;line-height:1.45
 .legend .cn{font-size:11.5px;color:var(--label2);border-top:.5px solid var(--sep);margin-top:4px;padding:6px 4px 2px;line-height:1.45}
 
 /* kartu info tulangan */
-#card{position:absolute;top:48px;right:12px;width:300px;border-radius:var(--r-l);padding:12px 14px 14px;display:none}
+#card{position:absolute;top:48px;right:12px;width:300px;border-radius:20px;padding:12px 14px 14px;display:none}
 #card.show{display:block}
 #card h5{margin:0 22px 4px 0;font-size:15px;font-weight:600}
 #card p{margin:4px 0;font-size:13px;color:var(--label2)}
@@ -224,6 +252,13 @@ aside{border-left:.5px solid var(--sep);display:flex;flex-direction:column;min-h
 </style>
 </head>
 <body class="sys-SRPMK">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <filter id="lg-refract" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+    <feTurbulence type="fractalNoise" baseFrequency="0.006 0.009" numOctaves="2" seed="7" result="n"/>
+    <feGaussianBlur in="n" stdDeviation="3" result="ns"/>
+    <feDisplacementMap in="SourceGraphic" in2="ns" scale="34" xChannelSelector="R" yChannelSelector="G"/>
+  </filter>
+</svg>
 <header>
   <button class="pt" id="tglNav" aria-controls="nav" aria-expanded="true" title="Sembunyikan daftar komponen ( [ )" aria-label="Sembunyikan daftar komponen"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="3.5" width="15" height="13" rx="2.5"/><rect class="bar" x="4" y="5" width="4" height="10" rx="1"/></svg></button>
   <div class="brand"><b>Atlas Tulangan</b><span id="crumb"></span></div>
@@ -239,14 +274,17 @@ aside{border-left:.5px solid var(--sep);display:flex;flex-direction:column;min-h
   <nav id="nav"></nav>
   <section id="view">
     <div id="labels"></div>
-    <div class="legend glass" id="legend"></div>
-    <div class="hint">Seret untuk memutar, gulir untuk zoom, klik tulangan untuk detail</div>
-    <div id="card" class="glass"><button class="x" id="cardX" aria-label="Tutup">✕</button><h5 id="cardT"></h5><div id="cardB"></div></div>
-    <div class="toolbar glass">
+    <div class="legend lg dense" id="legend"></div>
+    <div class="hint lg">Seret untuk memutar, gulir untuk zoom, klik tulangan untuk detail</div>
+    <div class="flyhint lg" id="flyHint"><b>Mode jelajah</b> <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> bergerak · gerakkan mouse untuk melihat · <kbd>E</kbd>/<kbd>Spasi</kbd> naik · <kbd>Q</kbd> turun · <kbd>Shift</kbd> cepat · klik untuk info tulangan · <kbd>F</kbd> keluar</div>
+    <div class="crosshair" aria-hidden="true"></div>
+    <div id="card" class="lg dense"><button class="x" id="cardX" aria-label="Tutup">✕</button><h5 id="cardT"></h5><div id="cardB"></div></div>
+    <div class="toolbar lg">
       <label>Transparansi <input type="range" id="xray" min="0" max="1" step="0.01" value="0.72"></label>
       <label>Potong <input type="range" id="cut" min="0" max="1" step="0.005" value="1"></label>
       <label>Urai <input type="range" id="explode" min="0" max="1" step="0.01" value="0"></label>
       <label>Label <input type="checkbox" class="sw" id="labelsOn" checked></label>
+      <button class="btn" id="flyBtn" aria-pressed="false" title="Mode jelajah (F)">Jelajah</button>
       <button class="btn" id="resetCam">Reset kamera</button>
     </div>
   </section>

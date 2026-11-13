@@ -34,7 +34,10 @@ const SYS_TEXT={
   SRPMK:'Sistem Rangka Pemikul Momen Khusus. Wajib untuk KDS D sampai F, detailing daktail Pasal 18.'
 };
 const clone=o=>JSON.parse(JSON.stringify(o));
-const state={comp:'balok',sys:'SRPMK',params:{},vis:{},view:{xray:0.72,cut:1,explode:0,labels:true}};
+const state={comp:'balok',sys:'SRPMK',params:{},vis:{},viewBy:{},view:{labels:true}};
+// transparansi, potong, dan urai disimpan per komponen agar tidak saling memengaruhi
+const VDEF={xray:0.72,cut:1,explode:0};
+const V=()=>state.viewBy[state.comp]??={...VDEF};
 for(const c of Object.values(COMPS)){ state.params[c.id]=clone(c.defaults); state.vis[c.id]={}; }
 const sysKey=c=>c.sysDependent?state.sys:'ALL';
 // lapisan boleh mati secara bawaan (off:true), misalnya plesteran; pilihan pengguna tetap diutamakan
@@ -42,9 +45,9 @@ const isOn=L=>{ const v=state.vis[state.comp]?.[L.k]; return v===undefined?!L.of
 
 /* ===== three ===== */
 const view=document.getElementById('view');
-const renderer=new THREE.WebGLRenderer({antialias:true});
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
 renderer.setPixelRatio(Math.min(2,window.devicePixelRatio));
-renderer.setClearColor(0xf5f5f7);
+renderer.setClearColor(0x000000,0);
 renderer.localClippingEnabled=true;
 view.prepend(renderer.domElement);
 const scene=new THREE.Scene();
@@ -123,6 +126,7 @@ function build3D(m){
 // Render lalu gagal setiap frame dan model tampak membeku, jadi penyesuaian kamera ditunda sampai ukurannya nyata.
 let fitPending=false;
 function fitCamera(){
+  if(fly.on) setFly(false);
   if(!view.clientWidth||!view.clientHeight){ fitPending=true; return; }
   fitPending=false;
   const bb=new THREE.Box3().setFromObject(root); const sph=bb.getBoundingSphere(new THREE.Sphere());
@@ -133,7 +137,7 @@ function fitCamera(){
   camera.position.copy(tgt).addScaledVector(dir,dist); controls.target.copy(tgt); controls.update();
 }
 function applyView(){
-  const v=state.view, op=1-v.xray;
+  const v=V(), op=1-v.xray;
   M.concrete.opacity=Math.max(0.02,op*0.9+0.04); M.stub.opacity=Math.max(0.02,op*0.6+0.03);
   M.concrete.depthWrite=op>0.97; M.edge.opacity=0.25+op*0.5;
   for(const mm of masonMat.values()){ mm.opacity=Math.max(0.1,1-0.8*v.xray); mm.depthWrite=mm.opacity>0.97; }
@@ -160,7 +164,7 @@ renderer.domElement.addEventListener('pointerdown',e=>{downAt=[e.clientX,e.clien
 renderer.domElement.addEventListener('pointerup',e=>{
   if(!downAt||Math.hypot(e.clientX-downAt[0],e.clientY-downAt[1])>5) return;
   const r=renderer.domElement.getBoundingClientRect();
-  mv.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);
+  if(document.pointerLockElement===renderer.domElement) mv.set(0,0); else mv.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);
   ray.setFromCamera(mv,camera);
   const hits=ray.intersectObjects(pickables,false).filter(h=>clip.distanceToPoint(h.point)>=0 && h.object.parent.visible);
   select(hits[0]?.object||null);
@@ -182,7 +186,45 @@ const pasalTxt=p=>p==='praktik'?'Praktik umum, bukan pasal SNI':/^(Pasal|Tabel)\
 function resize(){ const w=view.clientWidth,h=view.clientHeight; if(!w||!h) return; renderer.setPixelRatio(Math.min(2,window.devicePixelRatio)); renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix(); if(fitPending&&model) fitCamera(); }
 new ResizeObserver(resize).observe(view);
 (function watchDPR(){ matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`).addEventListener('change',()=>{ resize(); watchDPR(); },{once:true}); })();
-renderer.setAnimationLoop(()=>{ controls.update(); renderer.render(scene,camera); drawLabels(); });
+/* ===== mode jelajah: WASD seperti orang pertama ===== */
+const fly={on:false,keys:new Set(),drag:null,mul:1,base:1,dist:3}, clock=new THREE.Clock(), _f=new THREE.Vector3(), _r=new THREE.Vector3(), UP=new THREE.Vector3(0,1,0);
+const flyBtn=document.getElementById('flyBtn');
+function setFly(on){
+  if(on===fly.on) return; fly.on=on; controls.enabled=!on; document.body.classList.toggle('flying',on); flyBtn.setAttribute('aria-pressed',String(on)); fly.keys.clear(); fly.drag=null;
+  if(on){ if(document.activeElement&&document.activeElement!==document.body) document.activeElement.blur();
+    try{ const pr=renderer.domElement.requestPointerLock(); if(pr&&pr.catch) pr.catch(()=>{}); }catch(_){}
+    fly.dist=camera.position.distanceTo(controls.target)||3; const sph=new THREE.Box3().setFromObject(root).getBoundingSphere(new THREE.Sphere()); fly.base=Math.max(0.3,sph.radius*0.45); fly.mul=1;
+    camera.rotation.setFromQuaternion(camera.quaternion,'YXZ'); }
+  else { if(document.pointerLockElement) document.exitPointerLock(); camera.getWorldDirection(_f); controls.target.copy(camera.position).addScaledVector(_f,fly.dist); controls.update(); }
+}
+flyBtn.onclick=()=>setFly(!fly.on);
+const MOVE={KeyW:1,KeyA:1,KeyS:1,KeyD:1,KeyQ:1,KeyE:1,Space:1,ArrowUp:1,ArrowDown:1,ArrowLeft:1,ArrowRight:1,ShiftLeft:1,ShiftRight:1};
+window.addEventListener('keydown',e=>{
+  if(e.ctrlKey||e.metaKey||e.altKey||isTyping(e.target)) return;
+  if(e.code==='KeyF'){ setFly(!fly.on); return; }
+  if(!fly.on) return;
+  if(e.code==='Escape'){ setFly(false); return; }
+  if(MOVE[e.code]){ fly.keys.add(e.code); e.preventDefault(); const ae=document.activeElement; if(ae&&ae!==document.body) ae.blur(); }
+});
+window.addEventListener('keyup',e=>fly.keys.delete(e.code));
+window.addEventListener('blur',()=>fly.keys.clear());
+// Pandangan mengikuti gerak mouse tanpa perlu menekan tombol. Dengan pointer lock kursor dikunci di tengah;
+// bila browser menolak pointer lock, gerakan mouse di atas kanvas tetap memutar pandangan.
+const isLocked=()=>document.pointerLockElement===renderer.domElement;
+renderer.domElement.addEventListener('pointermove',e=>{ if(!fly.on) return;
+  camera.rotation.y-=e.movementX*0.0025; camera.rotation.x=Math.max(-1.5,Math.min(1.5,camera.rotation.x-e.movementY*0.0025)); });
+document.addEventListener('pointerlockchange',()=>{ const l=isLocked(); document.body.classList.toggle('locked',l); if(!l&&fly.wasLocked&&fly.on) setFly(false); fly.wasLocked=l; });
+document.addEventListener('pointerlockerror',()=>document.body.classList.remove('locked'));
+renderer.domElement.addEventListener('wheel',e=>{ if(!fly.on) return; e.preventDefault(); fly.mul=Math.max(0.1,Math.min(8,fly.mul*(e.deltaY>0?0.85:1.18))); },{passive:false});
+function flyStep(dt){
+  const k=fly.keys, sp=fly.base*fly.mul*(k.has('ShiftLeft')||k.has('ShiftRight')?3:1)*dt;
+  camera.getWorldDirection(_f); _r.crossVectors(_f,UP).normalize();
+  const fw=(k.has('KeyW')||k.has('ArrowUp')?1:0)-(k.has('KeyS')||k.has('ArrowDown')?1:0), rt=(k.has('KeyD')||k.has('ArrowRight')?1:0)-(k.has('KeyA')||k.has('ArrowLeft')?1:0), upd=(k.has('KeyE')||k.has('Space')?1:0)-(k.has('KeyQ')?1:0);
+  camera.position.addScaledVector(_f,fw*sp).addScaledVector(_r,rt*sp).addScaledVector(UP,upd*sp);
+}
+let lastErr='';
+renderer.setAnimationLoop(()=>{ try{ const dt=Math.min(clock.getDelta(),0.1); if(fly.on) flyStep(dt); else controls.update(); renderer.render(scene,camera); drawLabels(); }
+  catch(err){ if(String(err)!==lastErr){ lastErr=String(err); console.error('Gagal merender frame:',err); } } });
 
 /* ===== UI ===== */
 function renderNav(){
@@ -251,12 +293,12 @@ function renderTeori(c){
   const t=c.teori; const body=t.common+(c.sysDependent?t[state.sys]:(t.ALL||''));
   document.getElementById('pane-teori').innerHTML=body+`<p class="disclaimer">${c.ref||`Rujukan utama: SNI 2847:2019 Persyaratan Beton Struktural untuk Bangunan Gedung, SNI 1726:2019 untuk kategori desain seismik${c.refExtra||''}. Nomor pasal SNI 2847:2019 sudah dicocokkan dengan teks standar.`}</p>`;
 }
-function save(){ try{ localStorage.setItem('atlas-tulangan-v2',JSON.stringify({comp:state.comp,sys:state.sys,params:state.params,vis:state.vis})); }catch(e){} }
+function save(){ try{ localStorage.setItem('atlas-tulangan-v2',JSON.stringify({comp:state.comp,sys:state.sys,params:state.params,vis:state.vis,viewBy:state.viewBy})); }catch(e){} }
 
 function update(refit){
   const c=COMPS[state.comp]; const p=state.params[c.id][sysKey(c)];
   model=c.build(p,state.sys);
-  select(null); build3D(model); if(refit) fitCamera();
+  select(null); syncSliders(); build3D(model); if(refit) fitCamera();
   renderParams(c,model); renderChecks(model); renderDrawings(model); renderTeori(c);
   document.body.classList.remove('sys-SRPMB','sys-SRPMK','sys-NA'); document.body.classList.add('sys-'+(c.sysDependent?state.sys:'NA'));
   document.getElementById('crumb').textContent=`${c.name} · ${c.sysDependent?(c.sysName?.[state.sys]||state.sys):'umum'} · ${c.std||'SNI 2847:2019'}`;
@@ -267,17 +309,23 @@ function update(refit){
 }
 
 document.getElementById('sysSeg').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b||b.disabled) return; state.sys=b.dataset.sys; update(false); });
-document.getElementById('nav').addEventListener('click',e=>{ const b=e.target.closest('button[data-comp]'); if(!b) return; state.comp=b.dataset.comp; renderNav(); state.view.cut=1; document.getElementById('cut').value=1; update(true); try{ history.replaceState(null,'','#'+state.comp);}catch(_){} });
+document.getElementById('nav').addEventListener('click',e=>{ const b=e.target.closest('button[data-comp]'); if(!b) return; state.comp=b.dataset.comp; renderNav(); update(true); try{ history.replaceState(null,'','#'+state.comp);}catch(_){} });
 document.getElementById('tabs').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; document.querySelectorAll('#tabs button').forEach(x=>x.classList.toggle('on',x===b)); document.querySelectorAll('.pane').forEach(p=>p.classList.toggle('on',p.id==='pane-'+b.dataset.tab)); });
-const bindRange=(id,k)=>document.getElementById(id).addEventListener('input',e=>{ state.view[k]=Number(e.target.value); applyView(); });
+const bindRange=(id,k)=>{ const el=document.getElementById(id); el.addEventListener('input',e=>{ V()[k]=Number(e.target.value); applyView(); }); el.addEventListener('change',save); };
+const syncSliders=()=>{ const v=V(); for(const k of ['xray','cut','explode']) document.getElementById(k).value=v[k]; };
 bindRange('xray','xray'); bindRange('cut','cut'); bindRange('explode','explode');
 document.getElementById('labelsOn').onchange=e=>{state.view.labels=e.target.checked;};
 document.getElementById('resetCam').onclick=fitCamera;
 
 try{ const sv=JSON.parse(localStorage.getItem('atlas-tulangan-v2')||'null');
   if(sv){ for(const id in COMPS){ for(const k in state.params[id]) Object.assign(state.params[id][k],sv.params?.[id]?.[k]||{}); Object.assign(state.vis[id],sv.vis?.[id]||{}); }
+    for(const id in sv.viewBy||{}) if(COMPS[id]) state.viewBy[id]={...VDEF,...sv.viewBy[id]};
     if(COMPS[sv.comp]) state.comp=sv.comp; if(sv.sys) state.sys=sv.sys; } }catch(e){}
 const hash=(location.hash||'').slice(1); if(COMPS[hash]) state.comp=hash;
+// Pintasan keyboard hanya diabaikan saat pengguna mengetik. Switch, tombol, dan slider tidak dihitung mengetik,
+// supaya F, WASD, [ dan ] tetap bekerja setelah switch lapisan diklik.
+function isTyping(el){ if(!el) return false; if(el.isContentEditable||/^(SELECT|TEXTAREA)$/.test(el.tagName)) return true;
+  return el.tagName==='INPUT'&&!/^(checkbox|radio|button|submit|range|reset|color)$/.test(el.type); }
 // legenda Lapisan: terbuka di layar lebar, terlipat di layar sempit, kecuali pengguna pernah memilih
 { let lo=null; try{ lo=localStorage.getItem('atlas-tulangan-legend'); }catch(e){} document.getElementById('legend').classList.toggle('open',lo===null?!matchMedia('(max-width: 980px)').matches:lo==='1'); }
 /* ===== panel kiri dan kanan bisa disembunyikan ===== */
@@ -293,7 +341,7 @@ const togglePanel=k=>setPanel(k,document.body.classList.contains(PANELS[k].cls))
 document.getElementById('tglNav').onclick=()=>togglePanel('nav');
 document.getElementById('tglSide').onclick=()=>togglePanel('side');
 window.addEventListener('keydown',e=>{
-  if(e.ctrlKey||e.metaKey||e.altKey||/^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
+  if(e.ctrlKey||e.metaKey||e.altKey||isTyping(e.target)) return;
   if(e.key==='[') togglePanel('nav'); else if(e.key===']') togglePanel('side');
 });
 try{ const ly=JSON.parse(localStorage.getItem('atlas-tulangan-layout')||'null'); if(ly){ setPanel('nav',ly.nav!==false,false); setPanel('side',ly.side!==false,false); } }catch(e){}
