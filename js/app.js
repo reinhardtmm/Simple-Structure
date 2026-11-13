@@ -17,17 +17,17 @@ import kolompraktis from './comp/kolompraktis.js';
 import bata from './comp/bata.js';
 import gabungan from './comp/gabungan.js';
 
-// Dikelompokkan menurut urutan pelaksanaan gedung beton bertulang. Kelompok tanpa nomor berada di luar urutan.
+// Dikelompokkan menurut jenis elemen; di setiap kelompok elemen praktis didahulukan, lalu elemen struktur.
+// Mode gabungan tidak masuk kelompok mana pun: tombolnya ada di bawah daftar, dan saat aktif panel kiri berubah menjadi toggle.
 const GROUPS=[
-  ['Fondasi',[batukali,telapak,tiang],1],
-  ['Sloof',[sloofpraktis,sloof],2],
-  ['Kolom dan dinding geser',[kolom,dinding],3],
-  ['Balok dan pelat',[balok,pelat],4],
-  ['Tangga',[tangga],5],
-  ['Pasangan dinding',[bata,kolompraktis],6],
-  ['Hubungan',[hbk,gabungan]]
+  ['Fondasi',[batukali,telapak,tiang]],
+  ['Sloof dan balok',[sloofpraktis,sloof,balok]],
+  ['Kolom',[kolompraktis,kolom,hbk]],
+  ['Pelat dan tangga',[pelat,tangga]],
+  ['Dinding',[bata,dinding]]
 ];
-const COMPS=Object.fromEntries(GROUPS.flatMap(g=>g[1]).map(c=>[c.id,c]));
+const COMPS=Object.fromEntries([...GROUPS.flatMap(g=>g[1]),gabungan].map(c=>[c.id,c]));
+let lastComp='balok';  // komponen yang dibuka sebelum masuk mode gabungan, untuk tombol kembali
 const S=0.001;
 const SYS_TEXT={
   SRPMB:'Sistem Rangka Pemikul Momen Biasa. Untuk KDS B, detailing mengikuti pasal umum.',
@@ -295,11 +295,31 @@ renderer.setAnimationLoop(()=>{ try{ const dt=Math.min(clock.getDelta(),0.1), no
   catch(err){ if(String(err)!==lastErr){ lastErr=String(err); console.error('Gagal merender frame:',err); } } });
 
 /* ===== UI ===== */
+const ICO_GAB='<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M14 17.5h7M17.5 14v7"/></svg>';
+const ICO_BACK='<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M7.5 2.5 4 6l3.5 3.5"/></svg>';
 function renderNav(){
+  const nav=document.getElementById('nav'), st=nav.scrollTop;
+  nav.innerHTML=state.comp==='gabungan'?comboNav():listNav(); nav.scrollTop=st;
+}
+function listNav(){
   let h='';
-  for(const [g,cs,no] of GROUPS){ h+=`<h4>${no?`<span class="step">${no}</span>`:''}${g}</h4>`+cs.map(c=>`<button data-comp="${c.id}" class="${c.id===state.comp?'on':''}">${c.name}</button>`).join(''); }
-  h+=`<p class="note">Komponen diurutkan menurut urutan pelaksanaan, dari fondasi sampai pasangan dinding. Ubah parameter di panel kanan; model, gambar, dan hasil pemeriksaan berubah bersamaan.</p>`;
-  document.getElementById('nav').innerHTML=h;
+  for(const [g,cs] of GROUPS) h+=`<h4>${g}</h4>`+cs.map(c=>`<button data-comp="${c.id}" class="${c.id===state.comp?'on':''}">${c.name}</button>`).join('');
+  h+=`<button data-comp="gabungan" class="gab">${ICO_GAB}<span>Gabungan<small>Sambungkan komponen menjadi satu model</small></span></button>`;
+  h+=`<p class="note">Di setiap kelompok, elemen praktis didahulukan, lalu elemen struktur. Ubah parameter di panel kanan; model, gambar, dan hasil pemeriksaan berubah bersamaan.</p>`;
+  return h;
+}
+// Mode gabungan: panel kiri berisi pra-kombinasi dan satu toggle untuk setiap komponen di daftar
+const comboP=()=>state.params.gabungan[sysKey(gabungan)];
+function comboNav(){
+  const C=gabungan.combo, p=comboP(), match=pr=>C.keys.every(k=>!!p[k]===!!pr.set[k]);
+  let h=`<button class="back" data-back="1">${ICO_BACK}Daftar komponen</button>`;
+  h+=`<h4>Pra-kombinasi</h4>`+C.presets.map(pr=>`<button data-preset="${pr.id}" class="pre ${match(pr)?'on':''}" title="${pr.d}"><b>${pr.t}</b><small>${pr.d}</small></button>`).join('');
+  for(const [g,cs] of GROUPS){
+    h+=`<h4>${g}</h4><div class="tg">`+cs.map(c=>{ const why=C.why(c.id,p), on=!why&&!!p[c.id], sub=why||C.hint[c.id]||'';
+      return `<label class="tgl ${why?'dis':''}"><span>${c.name}${sub?`<small>${sub}</small>`:''}</span><input type="checkbox" class="sw" data-tg="${c.id}" ${on?'checked':''} ${why?'disabled':''}></label>`; }).join('')+`</div>`;
+  }
+  h+=`<p class="note">Komponen yang dinyalakan tersambung otomatis: kait kolom masuk ke fondasi, tulangan balok dan sloof diangkur ke kolom, dan dinding diangkur ke kolom. Fondasi kolom dan sloof masing-masing hanya satu jenis, jadi menyalakan yang satu mematikan yang lain. Kombinasi yang tidak lazim tetap bisa dicoba; akibatnya terlihat di tab Cek.</p>`;
+  return h;
 }
 function renderLayers(){
   const vis=state.vis[state.comp], isBlock=L=>L.k==='beton'||L.block;
@@ -310,8 +330,8 @@ function renderLayers(){
   h+=`</div>`;
   el.innerHTML=h;
   el.querySelector('.lt').onclick=()=>{ const o=el.classList.toggle('open'); el.querySelector('.lt').setAttribute('aria-expanded',String(o)); try{ localStorage.setItem('atlas-tulangan-legend',o?'1':'0'); }catch(e){} };
-  el.querySelectorAll('[data-layer]').forEach(cb=>cb.onchange=()=>{ vis[cb.dataset.layer]=cb.checked; applyView(); save(); });
-  el.querySelectorAll('[data-all]').forEach(b=>b.onclick=()=>{ const all=b.dataset.all==='1'; layerDefs.forEach(L=>vis[L.k]= all?true:!(isBlock(L)||L.k==='zona')); renderLayers(); applyView(); save(); });
+  el.querySelectorAll('[data-layer]').forEach(cb=>cb.onchange=()=>{ vis[cb.dataset.layer]=cb.checked; applyView(); renderDrawings(model); save(); });
+  el.querySelectorAll('[data-all]').forEach(b=>b.onclick=()=>{ const all=b.dataset.all==='1'; layerDefs.forEach(L=>vis[L.k]= all?true:!(isBlock(L)||L.k==='zona')); renderLayers(); applyView(); renderDrawings(model); save(); });
 }
 function renderParams(c,m){
   const pr=state.params[c.id][sysKey(c)];
@@ -346,14 +366,22 @@ function renderChecks(m){
   h+=`<p class="disclaimer">Pemeriksaan ini hanya mencakup detailing dan syarat geometri. Kapasitas lentur, geser, aksial, serta daya dukung tanah tidak dihitung karena memerlukan data beban dan tanah. ${c0.checkNote||'Nomor pasal mengacu pada SNI 2847:2019, adopsi modifikasi dari ACI 318M-14, dan sudah dicocokkan dengan teks SNI. Asumsi: agregat maksimum 20 mm, beton normal, tulangan tanpa lapisan epoksi.'} Pemeriksaan ini tetap alat bantu belajar, bukan pengganti desain oleh perencana.</p>`;
   document.getElementById('pane-cek').innerHTML=h;
 }
-function renderDrawings(m){
+// Gambar 2D hanya memuat lapisan yang sedang menyala di panel Lapisan. Beton tanpa kunci lapisan masuk lapisan 'beton'.
+function visibleModel(m){
+  const off=new Set(layerDefs.filter(L=>!isOn(L)).map(L=>L.k));
+  return {m:off.size?{...m,concrete:m.concrete.filter(c=>!off.has(c.layer||'beton')),bars:m.bars.filter(b=>!off.has(b.layer))}:m,
+    hidden:layerDefs.filter(L=>off.has(L.k)&&!L.zone).map(L=>L.label.toLowerCase())};
+}
+function renderDrawings(m0){
+  const {m,hidden}=visibleModel(m0);
   let h='', i=0; const V=m.views||[];
+  if(!m.concrete.length&&!m.bars.length){ document.getElementById('pane-gambar').innerHTML=`<p class="disclaimer">Semua lapisan disembunyikan, jadi tidak ada yang digambar. Nyalakan lapisan di panel Lapisan.</p>`; return; }
   while(i<V.length){
     const v=V[i];
     if(v.w2 && V[i+1]?.w2){ const v2=V[i+1]; h+=`<div class="draw2">${box(v)}${box(v2)}</div>`; i+=2; }
     else { h+=box(v); i++; }
   }
-  h+=`<p class="disclaimer">Satuan mm. Gambar dihasilkan dari model 3D yang sama, sehingga selalu sesuai dengan parameter. ${m.drawNote||''}</p>`;
+  h+=`<p class="disclaimer">Satuan mm. Gambar dihasilkan dari model 3D yang sama, sehingga selalu sesuai dengan parameter dan lapisan yang menyala.${hidden.length?` Tidak digambar karena disembunyikan: ${hidden.join(', ')}.`:''} ${m.drawNote||''}</p>`;
   document.getElementById('pane-gambar').innerHTML=h;
   function box(v){ return `<div class="draw"><h6>${v.title}</h6>${v.sub?`<div class="sub">${v.sub}</div>`:''}${renderView(m,v)}</div>`; }
 }
@@ -377,7 +405,18 @@ function update(refit){
 }
 
 document.getElementById('sysSeg').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b||b.disabled) return; state.sys=b.dataset.sys; update(false); });
-document.getElementById('nav').addEventListener('click',e=>{ const b=e.target.closest('button[data-comp]'); if(!b) return; state.comp=b.dataset.comp; renderNav(); update(true); try{ history.replaceState(null,'','#'+state.comp);}catch(_){} });
+const goComp=id=>{ if(id===state.comp) return; if(id==='gabungan') lastComp=state.comp; state.comp=id; renderNav(); update(true); try{ history.replaceState(null,'','#'+state.comp);}catch(_){} };
+document.getElementById('nav').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  if(b.dataset.comp) goComp(b.dataset.comp);
+  else if(b.dataset.back) goComp(COMPS[lastComp]&&lastComp!=='gabungan'?lastComp:'balok');
+  else if(b.dataset.preset){ const pr=gabungan.combo.presets.find(q=>q.id===b.dataset.preset); Object.assign(comboP(),pr.set); renderNav(); update(true); }
+});
+document.getElementById('nav').addEventListener('change',e=>{
+  const k=e.target.dataset?.tg; if(!k) return; const p=comboP(), on=e.target.checked;
+  p[k]=on; if(on) gabungan.combo.excl.forEach(pair=>{ if(pair.includes(k)) pair.forEach(x=>{ if(x!==k) p[x]=false; }); });
+  renderNav(); update(false);
+});
 document.getElementById('tabs').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; document.querySelectorAll('#tabs button').forEach(x=>x.classList.toggle('on',x===b)); document.querySelectorAll('.pane').forEach(p=>p.classList.toggle('on',p.id==='pane-'+b.dataset.tab)); });
 const bindRange=(id,k)=>{ const el=document.getElementById(id); el.addEventListener('input',e=>{ V()[k]=Number(e.target.value); applyView(); }); el.addEventListener('change',save); };
 const syncSliders=()=>{ const v=V(); for(const k of ['xray','cut','explode']) document.getElementById(k).value=v[k]; };
