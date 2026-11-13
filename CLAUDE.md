@@ -2,6 +2,10 @@
 
 Web app edukasi untuk melihat detailing tulangan komponen struktur beton bertulang dan elemen praktis bangunan sederhana (pasangan bata, kolom praktis, sloof praktis, fondasi batu kali) dalam 3D, lengkap dengan gambar 2D, pemeriksaan syarat SNI 2847:2019, dan penjelasan. Pemilik proyek: mahasiswa Teknik Sipil UGM.
 
+## Catatan iCloud Drive
+
+Folder proyek berada di iCloud Drive. Saat file sering ditulis ulang, iCloud kadang membuat salinan konflik bernama `nama 2.js` dan file aslinya hilang, sehingga aplikasi gagal dimuat. Bila itu terjadi, bandingkan isinya, lalu kembalikan nama filenya. Periksa juga `git status` sebelum commit.
+
 ## Menjalankan
 
 Halaman memakai ES module, jadi tidak bisa dibuka langsung lewat file://. Jalankan server lokal dari folder ini:
@@ -17,13 +21,14 @@ Lalu buka http://localhost:8765. Three.js r160 dimuat dari CDN jsdelivr lewat im
 ## Struktur
 
 - `index.html`: tata letak, CSS, dan importmap. Tidak ada build step. Gaya mengikuti Apple Human Interface Guidelines: font sistem (SF Pro di perangkat Apple, Inter dari Google Fonts sebagai cadangan), warna sistem HIG sebagai token di `:root`, segmented control, daftar bergrup, dan switch. Jangan kembali ke IBM Plex; pemilik proyek tidak ingin tampilan yang mirip antarmuka Claude. Hanya mode terang.
-- `js/app.js`: scene Three.js, kamera, pemotongan (clipping), urai (explode), toggle lapisan, raycast klik, dan semua panel UI. Daftar komponen dan pengelompokan navigasi ada di konstanta `GROUPS`, diurutkan menurut urutan pelaksanaan (1 Fondasi, 2 Sloof, 3 Kolom dan dinding geser, 4 Balok dan pelat, 5 Tangga, 6 Pasangan dinding) ditambah kelompok Hubungan tanpa nomor. Pemilik proyek berencana membuat mode gabungan yang menyambungkan beberapa komponen sekaligus; hbk sengaja diletakkan sendiri di kelompok Hubungan.
+- `js/app.js`: scene Three.js, kamera, pemotongan (clipping), urai (explode), toggle lapisan, raycast klik, dan semua panel UI. Daftar komponen dan pengelompokan navigasi ada di konstanta `GROUPS`, diurutkan menurut urutan pelaksanaan (1 Fondasi, 2 Sloof, 3 Kolom dan dinding geser, 4 Balok dan pelat, 5 Tangga, 6 Pasangan dinding) ditambah kelompok Hubungan tanpa nomor. Kelompok Hubungan berisi hbk dan `gabungan` (mode gabungan).
 - `js/core.js`: utilitas bersama.
   - Rumus: `devLen` (ℓd Tabel 25.4.2.2, bentuk sederhana), `ldhGen` (25.4.3.1), `ldhSeis` (18.8.5.1), `ldc` (25.4.9.2), `ashReq` (18.7.5.4).
   - Geometri: `turtle` (pembuat polyline 2D dengan lengkung), `hoop2D` (sengkang tertutup dengan kait 90 atau 135), `crosstie2D`, `rectCage` (susunan tulangan, sengkang, kait silang, dan hx untuk penampang persegi), `lift3D` (helix kecil supaya dua kait sengkang tidak saling tembus).
-  - Pasangan: `BATA` (ukuran nominal SNI 15-2094-2000 dan bata ringan), `MAT` (warna material non-beton), `SPESI` (campuran dan penggunaannya), `bataWall` (menyusun bata per lapis dengan ikatan ½ atau 1 bata, gigi ke kolom, dan menghitung bata serta spesi per m²), `bentBar` (tulangan dengan bengkokan 90° di kedua ujung), `trapesium`, serta teks rujukan `PU`, `REF_PRAKTIS`, `NOTE_PRAKTIS`.
+  - Pasangan: `BATA` (ukuran nominal SNI 15-2094-2000 dan bata ringan), `MAT` (warna material non-beton), `SPESI` (campuran dan penggunaannya), `bataWall` (menyusun bata per lapis dengan ikatan ½ atau 1 bata, gigi ke kolom, dan menghitung bata serta spesi per m²), `bentBar` (tulangan dengan bengkokan 90° di kedua ujung), `trapesium`, `rng` (acak dengan seed tetap), `rubble` (menyusun batu kali tak beraturan per lapis di penampang yang lebarnya berubah, termasuk aanstamping berdiri), `rockVol`, serta teks rujukan `PU`, `REF_PRAKTIS`, `NOTE_PRAKTIS`.
   - `renderView`: mesin gambar 2D generik. Memproyeksikan atau memotong model 3D yang sama menjadi SVG, jadi gambar selalu sinkron dengan parameter.
 - `js/comp/*.js`: satu file per komponen.
+- `js/comp/gabungan.js`: mode gabungan. Satu portal (kolom di x = 0 dan x = Lb, y = 0 di atas sloof) yang menyambungkan fondasi kolom (telapak, tiang, atau tanpa), fondasi batu kali, sloof, kolom, balok, pelat, serta dinding bata dengan kolom praktis otomatis. Setiap komponen bisa dimatikan lewat parameter bool, dan sambungannya (kait kolom di fondasi dan joint, kait balok dan sloof di kolom, sengkang joint, angkur) ikut muncul atau hilang. Model ini membangun geometrinya sendiri dengan helper `core.js`, bukan memanggil `build()` komponen lain, dan pemeriksaannya hanya untuk sambungan antar komponen.
 - `tools/screenshot_all.py`: uji visual dengan Playwright dan Chrome headless. Membuka setiap komponen di kedua sistem rangka, mencatat pemeriksaan yang gagal, error JavaScript, dan menyimpan screenshot.
 
 ## Kontrak komponen
@@ -46,10 +51,10 @@ Setiap file di `js/comp/` mengekspor objek:
 
 - `layers`: `[{k, label, color, ex:[dx,dy,dz], block?, off?}]`. `ex` adalah perpindahan dalam mm saat slider urai penuh. `block:true` untuk lapisan material (bata, spesi, batu) yang ikut disembunyikan oleh tombol Tulangan saja. `off:true` membuat lapisan mati secara bawaan.
 - `betonEx`: perpindahan beton saat diurai.
-- `concrete`: `[{box:[x0,x1,y0,y1,z0,z1], kind?:'stub'}]`, `{boxes:[[...],...]}` (banyak kotak digabung jadi satu geometri, misalnya bata), `{cyl:{x,z,r,y0,y1}}`, `{prism:{pts:[[x,y]...], z0, z1}}`, atau `{prism:{axis:'x', pts:[[z,y]...], x0, x1}}`. Setiap item boleh punya `mat` (kunci `MAT`, mis. 'bata', 'spesi', 'batu') dan `layer` (grup toggle sendiri; tanpa `layer` masuk grup 'beton'). Di gambar 2D, item yang didaftarkan lebih dulu tergambar di bawah, jadi spesi harus sebelum bata.
+- `concrete`: `[{box:[x0,x1,y0,y1,z0,z1], kind?:'stub'}]`, `{boxes:[[...],...]}` (banyak kotak digabung jadi satu geometri, misalnya bata), `{cyl:{x,z,r,y0,y1}}`, `{prism:{pts:[[x,y]...], z0, z1}}`, atau `{prism:{axis:'x', pts:[[z,y]...], x0, x1}}`, atau `{rocks:[{c, s, r}]}` (batu berupa ikosahedron yang diskalakan dan diputar; di 2D digambar sebagai elips). Setiap item boleh punya `mat` (kunci `MAT`, mis. 'bata', 'spesi', 'batu') dan `layer` (grup toggle sendiri; tanpa `layer` masuk grup 'beton'). Di gambar 2D, item yang didaftarkan lebih dulu tergambar di bawah, jadi spesi harus sebelum bata.
 - `zones`: kotak transparan berwarna untuk daerah khusus seperti 2h, ℓo, dan lewatan.
 - `bars`: `[{pts:[[x,y,z]...], d, layer, color, info:{t, b:[...], pasal}, maxSeg?}]`.
-- `labels`: `[{p:[x,y,z], t, c?:'conf'|'lap'|'mid'}]`.
+- `labels`: `[{p:[x,y,z], t, c?:'conf'|'lap'|'mid', follow?}]`. `follow` adalah kunci lapisan; label ikut bergeser saat diurai dan disembunyikan bila lapisannya mati.
 - `views`: spesifikasi gambar untuk `renderView`: `{title, sub?, n:'x'|'y'|'z', at?, half?, u, v, layers?, dims?, notes?, skipStub?, skipMat?:[...], w2?, maxH?}`. Tanpa `half` berarti proyeksi penuh. Dengan `half` berarti potongan setebal 2·half di koordinat `at`.
 - `checks`: `[{ok:true|false|null, t, d, p}]`. `null` adalah info. `p` yang diawali `Pasal` atau `Tabel` otomatis diberi awalan SNI 2847:2019; `'praktik'` ditampilkan sebagai praktik umum; selain itu ditulis apa adanya (mis. 'SNI 15-2094-2000' atau konstanta `PU`).
 - `derived`: HTML nilai turunan. `camDir`, `camK`: arah dan jarak kamera. `cutAxis`: sumbu slider potong. `colorNote` opsional.

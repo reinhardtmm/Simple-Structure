@@ -103,7 +103,7 @@ export const BATA={
 };
 export const BATA_OPTS=Object.entries(BATA).map(([k,v])=>[k,v.nama]);
 // Warna material; dipakai di 3D (app.js) dan gambar 2D (renderView)
-export const MAT={bata:'#c4603f',ringan:'#d9d6cf',spesi:'#d8d2c4',plester:'#e9e6df',batu:'#8d9097',aanstamping:'#a7a49c',pasir:'#e3d2a2'};
+export const MAT={bata:'#c4603f',ringan:'#d9d6cf',spesi:'#d8d2c4',plester:'#e9e6df',batu:'#8d9097',aanstamping:'#a7a49c',pasir:'#e3d2a2',tanah:'#b39a76',urug:'#c9b48f'};
 // Campuran spesi yang lazim (volume semen : pasir) beserta penggunaannya
 export const SPESI={
   '1:2':'kedap air (trasraam): dinding kamar mandi dan 30 cm di atas lantai',
@@ -150,6 +150,27 @@ export const NOTE_PRAKTIS='Komponen ini adalah elemen praktis untuk bangunan sed
 export const SPESI_TABEL=`<table><tr><th>Campuran (PC : pasir)</th><th>Penggunaan umum</th></tr>${Object.entries(SPESI).map(([k,v])=>`<tr><td>1 PC : ${k.split(':')[1]} Ps</td><td>${v}</td></tr>`).join('')}</table>`;
 export const BATA_TABEL=`<table><tr><th>Jenis</th><th>t × w × l (mm)</th></tr>${Object.entries(BATA).map(([k,b])=>`<tr><td>${b.ringan?'Bata ringan':'Bata merah '+k}</td><td>${b.t} × ${b.w} × ${b.l}</td></tr>`).join('')}</table>`;
 
+// bilangan acak dengan seed tetap, supaya susunan batu sama setiap kali dimuat
+export function rng(seed){ let s=seed|0; return ()=>{ s=s+0x6D2B79F5|0; let t=Math.imul(s^s>>>15,1|s); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+/* Susun batu kali di dalam penampang yang lebarnya berubah terhadap y (trapesium).
+   width(y): lebar penampang di ketinggian y; axis: arah memanjang fondasi; a0..a1: rentang memanjang; c: sumbu penampang.
+   tegak=true untuk aanstamping (batu kosong dipasang berdiri). Hasil: [{c:[x,y,z], s:[sx,sy,sz] (setengah ukuran), r:[rx,ry,rz]}]. */
+export function rubble({axis='z',a0,a1,y0,y1,width,c=0,size=180,gap=25,tegak=false,seed=7}){
+  const R=rng(seed), rocks=[], put=(al,y,cr,sa,sy,sc)=>{ const r=[(R()-.5)*.5,(R()-.5)*.9,(R()-.5)*.5];
+    rocks.push(axis==='z'?{c:[cr,y,al],s:[sc,sy,sa],r}:{c:[al,y,cr],s:[sa,sy,sc],r}); };
+  const hC=tegak?(y1-y0):size*0.72+gap;
+  for(let yb=y0;yb<y1-gap*1.5;yb+=hC){
+    const hh=Math.min(hC,y1-yb), ym=yb+hh/2, W=Math.min(width(yb+gap),width(yb+hh-gap));
+    const across=tegak?size*0.45:size, n=Math.max(1,Math.floor((W-gap)/(across+gap))), cw=(W-gap)/n;
+    const step=(tegak?size*0.55:size)+gap;
+    for(let i=0;i<n;i++){ const cc=c-W/2+gap/2+cw*(i+.5);
+      for(let al=a0+step/2+(R()-.5)*step*0.4;al<a1-step/2+gap;al+=step*(0.85+R()*0.3)){
+        put(al+(R()-.5)*gap,ym+(R()-.5)*gap*0.6,cc+(R()-.5)*gap*0.6,(step-gap)/2*(0.75+R()*0.25),(hh-gap)/2*(0.8+R()*0.2),(cw-gap)/2*(0.75+R()*0.25)); } }
+  }
+  return rocks;
+}
+export const rockVol=r=>2.536*r.s[0]*r.s[1]*r.s[2]; // volume ikosahedron beraturan dengan jari-jari 1 diskalakan
+
 // titik penampang trapesium (fondasi batu kali): lebar atas a di yTop, lebar bawah B sedalam h, simetris terhadap c
 export const trapesium=(a,B,yTop,h,c=0)=>[[c-B/2,yTop-h],[c+B/2,yTop-h],[c+a/2,yTop],[c-a/2,yTop]];
 
@@ -174,6 +195,9 @@ export function renderView(m,v){
     if(v.skipMat&&c.mat&&v.skipMat.includes(c.mat)) continue;
     if(c.box) rect(c.box,c,1.1);
     else if(c.boxes) c.boxes.forEach(b=>rect(b,c,0.45));
+    else if(c.rocks) c.rocks.forEach(r=>{ // batu: digambar sebagai elips; rotasi diabaikan di 2D
+      if(cut&&Math.abs(r.c[n]-at)>r.s[n]*0.9) return; const k2=cut?Math.sqrt(Math.max(0.15,1-((r.c[n]-at)/r.s[n])**2)):1, rx=r.s[iu]*k2, ry=r.s[iv]*k2;
+      els.push({z:0,s:`<ellipse cx="${r.c[iu].toFixed(1)}" cy="${(-r.c[iv]).toFixed(1)}" rx="${rx.toFixed(1)}" ry="${ry.toFixed(1)}" fill="${fillOf(c)}" stroke="${SV.ink}" stroke-width="@0.5"/>`}); ext(r.c[iu]-rx,r.c[iv]-ry); ext(r.c[iu]+rx,r.c[iv]+ry); });
     else if(c.cyl){ const {x,z,r,y0:ya,y1:yb}=c.cyl;
       if(v.n==='y'){ if(cut&&(at<ya||at>yb)) continue; const cu=iu===0?x:z, cv=iv===0?x:z; els.push({z:0,s:`<circle cx="${cu}" cy="${-cv}" r="${r}" fill="${fillOf(c)}" stroke="${SV.ink}" stroke-width="@1.1"/>`}); ext(cu-r,cv-r); ext(cu+r,cv+r); }
       else { const cn=v.n==='x'?x:z, cu=v.u==='x'?x:z; let w=r; if(cut){ const d=Math.abs(at-cn); if(d>r) continue; w=Math.sqrt(r*r-d*d);}

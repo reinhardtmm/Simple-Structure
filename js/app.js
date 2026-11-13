@@ -15,6 +15,7 @@ import batukali from './comp/batukali.js';
 import sloofpraktis from './comp/sloofpraktis.js';
 import kolompraktis from './comp/kolompraktis.js';
 import bata from './comp/bata.js';
+import gabungan from './comp/gabungan.js';
 
 // Dikelompokkan menurut urutan pelaksanaan gedung beton bertulang. Kelompok tanpa nomor berada di luar urutan.
 const GROUPS=[
@@ -24,7 +25,7 @@ const GROUPS=[
   ['Balok dan pelat',[balok,pelat],4],
   ['Tangga',[tangga],5],
   ['Pasangan dinding',[bata,kolompraktis],6],
-  ['Hubungan',[hbk]]
+  ['Hubungan',[hbk,gabungan]]
 ];
 const COMPS=Object.fromEntries(GROUPS.flatMap(g=>g[1]).map(c=>[c.id,c]));
 const S=0.001;
@@ -89,6 +90,9 @@ function concreteMesh(c){
   if(c.boxes){ // banyak kotak (misalnya bata) digabung menjadi satu geometri agar ringan
     const gs=c.boxes.map(([x0,x1,y0,y1,z0,z1])=>new THREE.BoxGeometry((x1-x0)*S,(y1-y0)*S,(z1-z0)*S).translate((x0+x1)/2*S,(y0+y1)/2*S,(z0+z1)/2*S));
     const m=new THREE.Mesh(mergeGeometries(gs),mat); gs.forEach(g=>g.dispose()); return c.edges===false?m:withEdges(m,20); }
+  if(c.rocks){ // batu tak beraturan: ikosahedron yang diskalakan dan diputar, digabung jadi satu geometri
+    const e=new THREE.Euler(), gs=c.rocks.map(r=>new THREE.IcosahedronGeometry(1,0).scale(r.s[0]*S,r.s[1]*S,r.s[2]*S).applyMatrix4(new THREE.Matrix4().makeRotationFromEuler(e.set(r.r[0],r.r[1],r.r[2]))).translate(r.c[0]*S,r.c[1]*S,r.c[2]*S));
+    const g=mergeGeometries(gs); gs.forEach(q=>q.dispose()); g.computeVertexNormals(); return new THREE.Mesh(g,mat); }
   if(c.cyl){ const {x,z,r,y0,y1}=c.cyl; const m=new THREE.Mesh(new THREE.CylinderGeometry(r*S,r*S,(y1-y0)*S,40),mat); m.position.set(x*S,(y0+y1)/2*S,z*S); return withEdges(m,30); }
   if(c.prism){ const P=c.prism;
     if(P.axis==='x'){ // penampang di bidang z-y, diekstrusi sepanjang x (misalnya fondasi menerus di bawah sloof)
