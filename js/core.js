@@ -1,4 +1,4 @@
-// Atlas Tulangan: utilitas bersama, geometri tulangan, dan mesin gambar 2D
+// Atlas Struktur: utilitas bersama, geometri tulangan, dan mesin gambar 2D
 export const AREA = {8:50.3,10:78.5,13:132.7,16:201.1,19:283.5,22:380.1,25:490.9,29:660.5,32:804.2};
 export const DIAS = [10,13,16,19,22,25,29,32];
 export const DAGG = 20;
@@ -193,6 +193,7 @@ export function renderView(m,v){
   for(const c of m.concrete){
     if(v.skipStub&&c.kind==='stub') continue;
     if(v.skipMat&&c.mat&&v.skipMat.includes(c.mat)) continue;
+    if(v.skipLayer&&c.layer&&v.skipLayer.includes(c.layer)) continue;
     if(c.box) rect(c.box,c,1.1);
     else if(c.boxes) c.boxes.forEach(b=>rect(b,c,0.45));
     else if(c.rocks) c.rocks.forEach(r=>{ // batu: digambar sebagai elips; rotasi diabaikan di 2D
@@ -213,6 +214,7 @@ export function renderView(m,v){
   // tulangan
   for(const b of m.bars){
     if(lay&&!lay.has(b.layer)) continue;
+    if(v.skipLayer&&v.skipLayer.includes(b.layer)) continue;
     const P=b.pts, w=b.d;
     if(cut){
       let run=[];

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <script>try{var m=localStorage.getItem('atlas-tulangan-theme');if(m==='light'||m==='dark')document.documentElement.dataset.theme=m;}catch(e){}</script>
-<title>Atlas Tulangan</title>
+<title>Atlas Struktur</title>
 <!-- Gaya mengikuti Apple Human Interface Guidelines: font sistem (SF Pro di perangkat Apple), Inter sebagai cadangan di Windows/Android -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -19,7 +19,7 @@
 <style>
 :root{
   /* warna sistem HIG (mode terang) */
-  --bg:#f2f2f7; --bg2:#ffffff; --canvas:#f5f5f7;
+  --bg:#f2f2f7; --bg2:#ffffff; --menu:#ffffff; --canvas:#f5f5f7;
   --label:#000000; --label2:rgba(60,60,67,.6); --label3:rgba(60,60,67,.3);
   --sep:rgba(60,60,67,.18); --fill:rgba(118,118,128,.12); --fill2:rgba(118,118,128,.08);
   --tint:#007aff; --red:#ff3b30; --green:#34c759; --orange:#ff9500; --gray:#8e8e93;
@@ -38,7 +38,7 @@
 }
 /* mode gelap: mengikuti sistem (Otomatis) atau dipilih manual lewat data-theme */
 @media (prefers-color-scheme: dark){ :root:not([data-theme=light]){
-  --bg:#000000; --bg2:#1c1c1e; --canvas:#1c1c1e;
+  --bg:#000000; --bg2:#1c1c1e; --menu:#2c2c2e; --canvas:#1c1c1e;
   --label:#ffffff; --label2:rgba(235,235,245,.6); --label3:rgba(235,235,245,.3);
   --sep:rgba(84,84,88,.65); --fill:rgba(118,118,128,.24); --fill2:rgba(118,118,128,.16);
   --tint:#0a84ff; --red:#ff453a; --green:#30d158; --orange:#ff9f0a; --gray:#8e8e93;
@@ -49,7 +49,7 @@
   color-scheme:dark;
 } }
 :root[data-theme=dark]{
-  --bg:#000000; --bg2:#1c1c1e; --canvas:#1c1c1e;
+  --bg:#000000; --bg2:#1c1c1e; --menu:#2c2c2e; --canvas:#1c1c1e;
   --label:#ffffff; --label2:rgba(235,235,245,.6); --label3:rgba(235,235,245,.3);
   --sep:rgba(84,84,88,.65); --fill:rgba(118,118,128,.24); --fill2:rgba(118,118,128,.16);
   --tint:#0a84ff; --red:#ff453a; --green:#30d158; --orange:#ff9f0a; --gray:#8e8e93;
@@ -152,10 +152,36 @@ nav .gab span{font-weight:500}
 nav .gab small,nav .pre small{display:block;font-size:11.5px;font-weight:400;color:var(--label2);line-height:1.35;margin-top:1px}
 nav .back{gap:3px;color:var(--tint);font-weight:500;padding-left:4px}
 nav .back svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-nav .pre{display:block;padding:7px 10px;margin-bottom:2px}
-nav .pre b{font-weight:500;font-size:13.5px}
-nav .pre.on small{color:rgba(255,255,255,.82)}
-nav .pre:not(.on) small{display:none}
+nav .search{position:relative;margin:2px 0 4px}
+nav .search svg{position:absolute;left:9px;top:50%;width:14px;height:14px;margin-top:-7px;fill:none;stroke:var(--label2);stroke-width:1.6;stroke-linecap:round;pointer-events:none}
+nav .search input{width:100%;height:32px;border:0;border-radius:var(--r-s);background:var(--fill);padding:0 10px 0 29px;font:inherit;font-size:14px;color:var(--label);outline:none}
+nav .search input:focus{box-shadow:0 0 0 3px color-mix(in srgb,var(--tint) 35%,transparent)}
+nav .search input::placeholder{color:var(--label2)}
+nav .search+[data-grp] h4{margin-top:12px}
+nav .empty{font-size:12.5px;color:var(--label2);margin:14px 10px}
+nav .presetbox{background:var(--bg2);border-radius:var(--r-m);padding:10px;margin:10px 0 12px}
+nav .presetbox .pl{display:block;font-size:12px;font-weight:600;color:var(--label2);margin:0 0 5px}
+nav .psel{position:relative}
+nav .psel>button{justify-content:space-between;gap:8px;min-height:32px;padding:6px 9px;background:var(--fill);font-size:13.5px;font-weight:500;line-height:1.3}
+nav .psel>button:hover:not(.on){background:var(--fill)}
+nav .psel>button[aria-expanded=true],nav .psel>button:focus-visible{outline:none;box-shadow:0 0 0 3px color-mix(in srgb,var(--tint) 35%,transparent)}
+nav .psel svg{flex:none;fill:none;stroke-linecap:round;stroke-linejoin:round}
+nav .psel>button svg{width:9px;height:13px;stroke:var(--label2);stroke-width:1.5}
+nav .pmenu{position:absolute;left:-6px;right:-6px;top:calc(100% + 5px);z-index:30;background:var(--menu);border-radius:12px;padding:5px;
+  box-shadow:0 12px 32px rgba(0,0,0,.24),0 2px 6px rgba(0,0,0,.12),0 0 0 .5px var(--sep);animation:pm .14s cubic-bezier(.2,.8,.2,1)}
+@keyframes pm{from{opacity:0;transform:translateY(-4px) scale(.98)}}
+nav .pmenu button{align-items:flex-start;gap:7px;padding:7px 9px 7px 7px;font-size:13.5px;line-height:1.3;border-radius:7px;color:var(--label)}
+nav .pmenu button svg{width:12px;height:12px;margin-top:2px;stroke:currentColor;stroke-width:2;visibility:hidden}
+nav .pmenu button[aria-selected=true]{font-weight:600}
+nav .pmenu button[aria-selected=true] svg{visibility:visible}
+nav .pmenu button:hover,nav .pmenu button:focus-visible{background:var(--tint);color:#fff;outline:none}
+@media (prefers-reduced-motion: reduce){ nav .pmenu{animation:none} }
+nav .presetbox .pd{font-size:11.5px;color:var(--label2);line-height:1.4;margin:7px 1px 8px;min-height:calc(11.5px*1.4*4)}
+nav .presetbox .play{justify-content:center;gap:6px;background:var(--tint);color:#fff;font-size:13px;font-weight:500;padding:7px 10px}
+nav .presetbox .play:hover{background:var(--tint);filter:brightness(1.08)}
+nav .presetbox .play svg{width:11px;height:11px;fill:currentColor}
+#toast{position:fixed;left:50%;bottom:28px;z-index:60;max-width:min(440px,calc(100vw - 32px));transform:translate(-50%,16px);opacity:0;pointer-events:none;padding:9px 16px;border-radius:999px;font-size:13px;font-weight:500;color:var(--glass-text);text-align:center;transition:opacity .2s,transform .25s cubic-bezier(.2,.8,.2,1)}
+#toast.show{opacity:1;transform:translate(-50%,0)}
 nav .tg{background:var(--bg2);border-radius:var(--r-m);overflow:hidden}
 nav .tgl{display:flex;align-items:center;gap:8px;padding:6px 10px;min-height:38px;position:relative;cursor:pointer;font-size:13.5px;line-height:1.3}
 nav .tgl+.tgl::before{content:'';position:absolute;top:0;left:10px;right:0;border-top:.5px solid var(--sep)}
@@ -374,13 +400,14 @@ aside{border-left:.5px solid var(--sep);display:flex;flex-direction:column;min-h
 </svg>
 <header>
   <button class="pt" id="tglNav" aria-controls="nav" aria-expanded="true" title="Sembunyikan daftar komponen ( [ )" aria-label="Sembunyikan daftar komponen"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="3.5" width="15" height="13" rx="2.5"/><rect class="bar" x="4" y="5" width="4" height="10" rx="1"/></svg></button>
-  <div class="brand"><b>Atlas Tulangan</b><span id="crumb"></span></div>
+  <div class="brand"><b>Atlas Struktur</b><span id="crumb"></span></div>
   <div class="spacer"></div>
   <span class="syslabel" id="syslabel"></span>
   <div class="seg" id="sysSeg" role="group" aria-label="Sistem rangka">
     <button data-sys="SRPMB">SRPMB</button>
     <button data-sys="SRPMK" class="on">SRPMK</button>
   </div>
+  <button class="pt" id="shareBtn" title="Salin tautan berbagi" aria-label="Salin tautan berbagi"><svg viewBox="0 0 20 20" aria-hidden="true" stroke-linecap="round"><path d="M10 12V3.2M6.8 6.2 10 3l3.2 3.2"/><path d="M7 8.5H5.5A1.5 1.5 0 0 0 4 10v5.5A1.5 1.5 0 0 0 5.5 17h9a1.5 1.5 0 0 0 1.5-1.5V10a1.5 1.5 0 0 0-1.5-1.5H13"/></svg></button>
   <button class="pt" id="themeBtn" data-mode="auto" title="Tema: otomatis" aria-label="Ganti tema, saat ini otomatis"><svg class="t-auto" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="6.5"/><path class="bar" d="M10 3.5a6.5 6.5 0 0 1 0 13z"/></svg><svg class="t-light" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.6"/><path d="M10 2v2.2M10 15.8V18M2 10h2.2M15.8 10H18M4.3 4.3l1.6 1.6M14.1 14.1l1.6 1.6M4.3 15.7l1.6-1.6M14.1 5.9l1.6-1.6" stroke-linecap="round"/></svg><svg class="t-dark" viewBox="0 0 20 20" aria-hidden="true"><path d="M15.5 12.6A6.5 6.5 0 0 1 7.4 4.5a6.5 6.5 0 1 0 8.1 8.1z"/></svg></button>
   <button class="pt" id="tglSide" aria-controls="side" aria-expanded="true" title="Sembunyikan panel konfigurasi ( ] )" aria-label="Sembunyikan panel konfigurasi"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="3.5" width="15" height="13" rx="2.5"/><rect class="bar" x="12" y="5" width="4" height="10" rx="1"/></svg></button>
 </header>
@@ -432,5 +459,6 @@ aside{border-left:.5px solid var(--sep);display:flex;flex-direction:column;min-h
   </aside>
 </main>
 <script type="module" src="js/app.js"></script>
+<div id="toast" class="lg" role="status" aria-live="polite"></div>
 </body>
 </html>

@@ -297,28 +297,58 @@ renderer.setAnimationLoop(()=>{ try{ const dt=Math.min(clock.getDelta(),0.1), no
 /* ===== UI ===== */
 const ICO_GAB='<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M14 17.5h7M17.5 14v7"/></svg>';
 const ICO_BACK='<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M7.5 2.5 4 6l3.5 3.5"/></svg>';
+const ICO_FIND='<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="m10.5 10.5 3 3"/></svg>';
+const ICO_UPDN='<svg viewBox="0 0 10 14" aria-hidden="true"><path d="M2 5l3-3 3 3M2 9l3 3 3-3"/></svg>';
+const ICO_CHECK='<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6.5 4.8 9.2 10 3"/></svg>';
+const ICO_PLAY='<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M3.5 2.2v7.6L9.8 6z"/></svg>';
+// kata kunci tambahan untuk pencarian, termasuk istilah Inggris dan ejaan sehari-hari
+const KW={batukali:'pondasi rubble',telapak:'pondasi footing pad foot plat',tiang:'pondasi pile bored bore strauss',sloofpraktis:'tie beam',sloof:'tie beam',balok:'beam ring',
+  kolompraktis:'column',kolom:'column',hbk:'joint hbk beam column',pelat:'slab lantai',tangga:'stair bordes',bata:'tembok pasangan wall brick hebel',dinding:'shear wall struktural'};
+const norm=s=>String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+const escA=s=>String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+const qOf=(c,g)=>escA(`${c.name} ${g} ${c.id} ${KW[c.id]||''}`);
+let navQ='';
 function renderNav(){
-  const nav=document.getElementById('nav'), st=nav.scrollTop;
-  nav.innerHTML=state.comp==='gabungan'?comboNav():listNav(); nav.scrollTop=st;
+  const nav=document.getElementById('nav'), st=nav.scrollTop, fo=document.activeElement?.id==='navQ';
+  nav.innerHTML=(state.comp==='gabungan'?comboNav():listNav())+`<p class="empty" hidden>Tidak ada komponen yang cocok dengan pencarian.</p>`;
+  nav.scrollTop=st; applyNavFilter(); if(fo) nav.querySelector('#navQ')?.focus();
+}
+const searchBox=()=>`<div class="search">${ICO_FIND}<input type="search" id="navQ" placeholder="Cari komponen" autocomplete="off" spellcheck="false" aria-label="Cari komponen" value="${escA(navQ)}"></div>`;
+// Pencarian hanya menyembunyikan elemen, tidak menggambar ulang panel, supaya fokus dan posisi kursor tidak hilang
+function applyNavFilter(){
+  const nav=document.getElementById('nav'), q=norm(navQ.trim()), words=q.split(/\s+/).filter(Boolean);
+  let n=0;
+  nav.querySelectorAll('[data-q]').forEach(el=>{ const t=norm(el.dataset.q), hit=words.every(w=>t.includes(w)); el.hidden=!hit; if(hit) n++; });
+  nav.querySelectorAll('[data-grp]').forEach(g=>g.hidden=![...g.querySelectorAll('[data-q]')].some(el=>!el.hidden));
+  const e=nav.querySelector('.empty'); if(e) e.hidden=!!n||!words.length;
+  nav.querySelectorAll('.hide-q').forEach(el=>el.hidden=!!words.length);
 }
 function listNav(){
-  let h='';
-  for(const [g,cs] of GROUPS) h+=`<h4>${g}</h4>`+cs.map(c=>`<button data-comp="${c.id}" class="${c.id===state.comp?'on':''}">${c.name}</button>`).join('');
-  h+=`<button data-comp="gabungan" class="gab">${ICO_GAB}<span>Gabungan<small>Sambungkan komponen menjadi satu model</small></span></button>`;
-  h+=`<p class="note">Di setiap kelompok, elemen praktis didahulukan, lalu elemen struktur. Ubah parameter di panel kanan; model, gambar, dan hasil pemeriksaan berubah bersamaan.</p>`;
+  let h=searchBox();
+  for(const [g,cs] of GROUPS) h+=`<div data-grp><h4>${g}</h4>`+cs.map(c=>`<button data-comp="${c.id}" data-q="${qOf(c,g)}" class="${c.id===state.comp?'on':''}">${c.name}</button>`).join('')+`</div>`;
+  h+=`<button data-comp="gabungan" data-q="gabungan kombinasi preset sambungan portal rumah" class="gab">${ICO_GAB}<span>Gabungan<small>Sambungkan komponen menjadi satu model</small></span></button>`;
+  h+=`<p class="note hide-q">Di setiap kelompok, elemen praktis didahulukan, lalu elemen struktur. Ubah parameter di panel kanan; model, gambar, dan hasil pemeriksaan berubah bersamaan.</p>`;
   return h;
 }
 // Mode gabungan: panel kiri berisi pra-kombinasi dan satu toggle untuk setiap komponen di daftar
 const comboP=()=>state.params.gabungan[sysKey(gabungan)];
+const curPreset=()=>{ const C=gabungan.combo, p=comboP(); return C.presets.find(pr=>C.keys.every(k=>!!p[k]===!!pr.set[k])); };
 function comboNav(){
-  const C=gabungan.combo, p=comboP(), match=pr=>C.keys.every(k=>!!p[k]===!!pr.set[k]);
+  const C=gabungan.combo, p=comboP(), cur=curPreset();
   let h=`<button class="back" data-back="1">${ICO_BACK}Daftar komponen</button>`;
-  h+=`<h4>Pra-kombinasi</h4>`+C.presets.map(pr=>`<button data-preset="${pr.id}" class="pre ${match(pr)?'on':''}" title="${pr.d}"><b>${pr.t}</b><small>${pr.d}</small></button>`).join('');
+  // Deskripsi preset diberi tinggi tetap, supaya daftar toggle di bawahnya tidak bergeser saat preset berubah menjadi Kustom
+  // Menu pilihan dibuat sendiri, bukan <select>, karena menu bawaan sistem tidak mengikuti tema aplikasi (di mode gelap teksnya tidak terbaca)
+  h+=`<div class="presetbox hide-q"><span class="pl" id="presetLbl">Preset</span><div class="psel">
+    <button id="presetBtn" aria-haspopup="listbox" aria-expanded="false" aria-labelledby="presetLbl presetBtn"><span>${cur?cur.t:'Kustom'}</span>${ICO_UPDN}</button>
+    <div class="pmenu" id="presetMenu" role="listbox" aria-labelledby="presetLbl" hidden>${C.presets.map(pr=>`<button role="option" data-preset="${pr.id}" aria-selected="${pr===cur}" tabindex="-1">${ICO_CHECK}<span>${pr.t}</span></button>`).join('')}</div></div>
+    <p class="pd">${cur?cur.d:'Kombinasi sendiri dari toggle di bawah. Pilih preset untuk kembali ke kombinasi siap pakai.'}</p>
+    <button class="play" data-play="1">${ICO_PLAY}Putar tahapan</button></div>`;
+  h+=searchBox();
   for(const [g,cs] of GROUPS){
-    h+=`<h4>${g}</h4><div class="tg">`+cs.map(c=>{ const why=C.why(c.id,p), on=!why&&!!p[c.id], sub=why||C.hint[c.id]||'';
-      return `<label class="tgl ${why?'dis':''}"><span>${c.name}${sub?`<small>${sub}</small>`:''}</span><input type="checkbox" class="sw" data-tg="${c.id}" ${on?'checked':''} ${why?'disabled':''}></label>`; }).join('')+`</div>`;
+    h+=`<div data-grp><h4>${g}</h4><div class="tg">`+cs.map(c=>{ const why=C.why(c.id,p), on=!why&&!!p[c.id], sub=why||C.hint[c.id]||'';
+      return `<label class="tgl ${why?'dis':''}" data-q="${qOf(c,g)}"><span>${c.name}${sub?`<small>${sub}</small>`:''}</span><input type="checkbox" class="sw" data-tg="${c.id}" ${on?'checked':''} ${why?'disabled':''}></label>`; }).join('')+`</div></div>`;
   }
-  h+=`<p class="note">Komponen yang dinyalakan tersambung otomatis: kait kolom masuk ke fondasi, tulangan balok dan sloof diangkur ke kolom, dan dinding diangkur ke kolom. Fondasi kolom dan sloof masing-masing hanya satu jenis, jadi menyalakan yang satu mematikan yang lain. Kombinasi yang tidak lazim tetap bisa dicoba; akibatnya terlihat di tab Cek.</p>`;
+  h+=`<p class="note hide-q">Komponen yang dinyalakan tersambung otomatis: kait kolom masuk ke fondasi, tulangan balok dan sloof diangkur ke kolom, dan dinding diangkur ke kolom. Fondasi kolom, sloof, dan pengisi bentang (bata atau dinding geser) masing-masing hanya satu jenis, jadi menyalakan yang satu mematikan yang lain. Kombinasi yang tidak lazim tetap bisa dicoba; akibatnya terlihat di tab Cek.</p>`;
   return h;
 }
 function renderLayers(){
@@ -400,7 +430,7 @@ function update(refit){
   document.getElementById('crumb').textContent=`${c.name} · ${c.sysDependent?(c.sysName?.[state.sys]||state.sys):'umum'} · ${c.std||'SNI 2847:2019'}`;
   document.getElementById('syslabel').textContent=c.sysDependent?(c.sysText?.[state.sys]||SYS_TEXT[state.sys]):'Komponen ini tidak bergantung pada sistem rangka. Detailingnya sama untuk SRPMB dan SRPMK.';
   document.querySelectorAll('#sysSeg button').forEach(x=>{ x.disabled=!c.sysDependent; x.classList.toggle('on',c.sysDependent&&x.dataset.sys===state.sys); });
-  document.title=`Atlas Tulangan: ${c.name}`;
+  document.title=`Atlas Struktur: ${c.name}`;
   save();
 }
 
@@ -410,13 +440,40 @@ document.getElementById('nav').addEventListener('click',e=>{
   const b=e.target.closest('button'); if(!b) return;
   if(b.dataset.comp) goComp(b.dataset.comp);
   else if(b.dataset.back) goComp(COMPS[lastComp]&&lastComp!=='gabungan'?lastComp:'balok');
-  else if(b.dataset.preset){ const pr=gabungan.combo.presets.find(q=>q.id===b.dataset.preset); Object.assign(comboP(),pr.set); renderNav(); update(true); }
+  else if(b.dataset.play){ b.blur(); if(seq.on) seqClose(); seqOpen(); }
+  else if(b.id==='presetBtn') presetMenu(document.getElementById('presetMenu').hidden);
+  else if(b.dataset.preset) applyPreset(b.dataset.preset);
+});
+function presetMenu(open,focus=true){
+  const m=document.getElementById('presetMenu'), btn=document.getElementById('presetBtn'); if(!m) return;
+  m.hidden=!open; btn.setAttribute('aria-expanded',String(open));
+  if(open&&focus) (m.querySelector('[aria-selected=true]')||m.firstElementChild).focus();
+}
+function applyPreset(id){
+  const pr=gabungan.combo.presets.find(q=>q.id===id); if(!pr) return;
+  seqClose(); Object.assign(comboP(),pr.set); renderNav(); update(true); document.getElementById('presetBtn')?.focus();
+}
+document.addEventListener('pointerdown',e=>{ const m=document.getElementById('presetMenu'); if(m&&!m.hidden&&!e.target.closest('.psel')) presetMenu(false); });
+document.getElementById('nav').addEventListener('keydown',e=>{
+  const m=document.getElementById('presetMenu'); if(!m) return;
+  if(e.target.id==='presetBtn'&&(e.key==='ArrowDown'||e.key==='ArrowUp')){ e.preventDefault(); presetMenu(true); return; }
+  if(!e.target.closest('#presetMenu')) return;
+  const items=[...m.children], i=items.indexOf(e.target);
+  if(e.key==='ArrowDown'||e.key==='ArrowUp'){ e.preventDefault(); items[(i+(e.key==='ArrowDown'?1:-1)+items.length)%items.length].focus(); }
+  else if(e.key==='Home'||e.key==='End'){ e.preventDefault(); items[e.key==='Home'?0:items.length-1].focus(); }
+  else if(e.key==='Escape'){ e.preventDefault(); presetMenu(false); document.getElementById('presetBtn').focus(); }
+  else if(e.key==='Tab') presetMenu(false);
 });
 document.getElementById('nav').addEventListener('change',e=>{
   const k=e.target.dataset?.tg; if(!k) return; const p=comboP(), on=e.target.checked;
   p[k]=on; if(on) gabungan.combo.excl.forEach(pair=>{ if(pair.includes(k)) pair.forEach(x=>{ if(x!==k) p[x]=false; }); });
   renderNav(); update(false);
 });
+document.getElementById('nav').addEventListener('input',e=>{ if(e.target.id!=='navQ') return; navQ=e.target.value; applyNavFilter(); });
+document.getElementById('nav').addEventListener('keydown',e=>{ if(e.target.id!=='navQ') return;
+  if(e.key==='Escape'){ navQ=''; e.target.value=''; applyNavFilter(); }
+  else if(e.key==='Enter'){ const first=[...document.querySelectorAll('#nav [data-q]')].find(el=>!el.hidden); if(!first) return;
+    if(first.dataset.comp){ navQ=''; goComp(first.dataset.comp); } else first.querySelector('input:not(:disabled)')?.click(); } });
 document.getElementById('tabs').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; document.querySelectorAll('#tabs button').forEach(x=>x.classList.toggle('on',x===b)); document.querySelectorAll('.pane').forEach(p=>p.classList.toggle('on',p.id==='pane-'+b.dataset.tab)); });
 const bindRange=(id,k)=>{ const el=document.getElementById(id); el.addEventListener('input',e=>{ V()[k]=Number(e.target.value); applyView(); }); el.addEventListener('change',save); };
 const syncSliders=()=>{ const v=V(); for(const k of ['xray','cut','explode']) document.getElementById(k).value=v[k]; };
@@ -424,11 +481,41 @@ bindRange('xray','xray'); bindRange('cut','cut'); bindRange('explode','explode')
 document.getElementById('labelsOn').onchange=e=>{state.view.labels=e.target.checked;};
 document.getElementById('resetCam').onclick=fitCamera;
 
+/* ===== tautan berbagi: komponen, sistem rangka, parameter yang diubah, dan lapisan disimpan di URL ===== */
+const b64e=s=>btoa(unescape(encodeURIComponent(s))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+const b64d=s=>decodeURIComponent(escape(atob(s.replace(/-/g,'+').replace(/_/g,'/'))));
+function shareURL(){
+  const c=COMPS[state.comp], key=sysKey(c), cur=state.params[c.id][key], def=c.defaults[key], d={};
+  for(const k in def) if(k in cur&&JSON.stringify(cur[k])!==JSON.stringify(def[k])) d[k]=cur[k];
+  const q=new URLSearchParams({k:c.id}); if(c.sysDependent) q.set('s',state.sys);
+  if(Object.keys(d).length) q.set('p',b64e(JSON.stringify(d)));
+  // hanya lapisan yang berbeda dari keadaan bawaannya
+  const vis={}; for(const L of layerDefs){ const v=isOn(L); if(v===!!L.off) vis[L.k]=v; } if(Object.keys(vis).length) q.set('v',b64e(JSON.stringify(vis)));
+  return `${location.origin}${location.pathname}?${q}#${c.id}`;
+}
+const toastEl=document.getElementById('toast'); let toastT=0;
+function toast(t){ toastEl.textContent=t; toastEl.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>toastEl.classList.remove('show'),2600); }
+document.getElementById('shareBtn').onclick=async e=>{ e.currentTarget.blur(); const url=shareURL();
+  try{ await navigator.clipboard.writeText(url); toast('Tautan disalin. Siapa pun yang membukanya melihat model yang sama.'); }
+  catch(_){ window.prompt('Salin tautan ini:',url); } };
+// Membaca tautan berbagi. Hanya kunci yang ada di nilai awal dan bertipe sama yang diterima.
+let sharedOpen=false;
+function readShared(){
+  const q=new URLSearchParams(location.search), k=q.get('k'); if(!k||!COMPS[k]) return;
+  const c=COMPS[k], s=q.get('s'); if(c.sysDependent&&(s==='SRPMB'||s==='SRPMK')) state.sys=s;
+  const key=sysKey(c), def=c.defaults[key], pr=clone(def);
+  if(q.get('p')){ const d=JSON.parse(b64d(q.get('p'))); for(const x in d) if(x in def&&typeof d[x]===typeof def[x]) pr[x]=d[x]; }
+  state.params[k][key]=pr;
+  if(q.get('v')){ const v=JSON.parse(b64d(q.get('v'))), o={}; for(const x in v) if(typeof v[x]==='boolean') o[x]=v[x]; state.vis[k]=o; }
+  state.comp=k; sharedOpen=true;
+  try{ history.replaceState(null,'',location.pathname+'#'+k); }catch(_){}
+}
 try{ const sv=JSON.parse(localStorage.getItem('atlas-tulangan-v2')||'null');
   if(sv){ for(const id in COMPS){ for(const k in state.params[id]) Object.assign(state.params[id][k],sv.params?.[id]?.[k]||{}); Object.assign(state.vis[id],sv.vis?.[id]||{}); }
     for(const id in sv.viewBy||{}) if(COMPS[id]) state.viewBy[id]={...VDEF,...sv.viewBy[id]};
     if(COMPS[sv.comp]) state.comp=sv.comp; if(sv.sys) state.sys=sv.sys; } }catch(e){}
 const hash=(location.hash||'').slice(1); if(COMPS[hash]) state.comp=hash;
+try{ readShared(); }catch(e){ console.warn('Tautan berbagi tidak bisa dibaca:',e); }
 // Pintasan keyboard hanya diabaikan saat pengguna mengetik. Switch, tombol, dan slider tidak dihitung mengetik,
 // supaya F, WASD, [ dan ] tetap bekerja setelah switch lapisan diklik.
 function isTyping(el){ if(!el) return false; if(el.isContentEditable||/^(SELECT|TEXTAREA)$/.test(el.tagName)) return true;
@@ -454,6 +541,7 @@ window.addEventListener('keydown',e=>{
 try{ const ly=JSON.parse(localStorage.getItem('atlas-tulangan-layout')||'null'); if(ly){ setPanel('nav',ly.nav!==false,false); setPanel('side',ly.side!==false,false); } }catch(e){}
 
 renderNav(); resize(); update(true);
+if(sharedOpen) setTimeout(()=>toast('Membuka model dari tautan berbagi.'),300);
 window.addEventListener('hashchange',()=>{ const h=(location.hash||'').slice(1); if(COMPS[h]&&h!==state.comp){ state.comp=h; renderNav(); update(true); } });
 window.__atlas={state,update,camera,get pickables(){return pickables;},COMPS,
   // kait pengujian: memajukan animasi urutan tanpa menunggu frame (berguna saat tab di latar)

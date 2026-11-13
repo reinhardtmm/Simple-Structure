@@ -1,4 +1,4 @@
-# Atlas Tulangan
+# Atlas Struktur
 
 Model 3D interaktif detailing tulangan komponen struktur beton bertulang menurut SNI 2847:2019, dengan pilihan SRPMB dan SRPMK.
 
