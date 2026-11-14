@@ -156,16 +156,19 @@ export function rng(seed){ let s=seed|0; return ()=>{ s=s+0x6D2B79F5|0; let t=Ma
    width(y): lebar penampang di ketinggian y; axis: arah memanjang fondasi; a0..a1: rentang memanjang; c: sumbu penampang.
    tegak=true untuk aanstamping (batu kosong dipasang berdiri). Hasil: [{c:[x,y,z], s:[sx,sy,sz] (setengah ukuran), r:[rx,ry,rz]}]. */
 export function rubble({axis='z',a0,a1,y0,y1,width,c=0,size=180,gap=25,tegak=false,seed=7}){
-  const R=rng(seed), rocks=[], put=(al,y,cr,sa,sy,sc)=>{ const r=[(R()-.5)*.5,(R()-.5)*.9,(R()-.5)*.5];
-    rocks.push(axis==='z'?{c:[cr,y,al],s:[sc,sy,sa],r}:{c:[al,y,cr],s:[sa,sy,sc],r}); };
+  // k: baris (lapis), lajur, pusat lajur tanpa acak, dan indeks sumbu memanjang; dipakai gambar 2D untuk memilih baris batu yang rapi
+  let row=0, lane=0, lc=0; const ax=axis==='z'?2:0;
+  const R=rng(seed), rocks=[], put=(al,y,cr,sa,sy,sc)=>{ const r=[(R()-.5)*.5,(R()-.5)*.9,(R()-.5)*.5], k={row,lane,lc,ax};
+    rocks.push(axis==='z'?{c:[cr,y,al],s:[sc,sy,sa],r,k}:{c:[al,y,cr],s:[sa,sy,sc],r,k}); };
   const hC=tegak?(y1-y0):size*0.72+gap;
   for(let yb=y0;yb<y1-gap*1.5;yb+=hC){
     const hh=Math.min(hC,y1-yb), ym=yb+hh/2, W=Math.min(width(yb+gap),width(yb+hh-gap));
     const across=tegak?size*0.45:size, n=Math.max(1,Math.floor((W-gap)/(across+gap))), cw=(W-gap)/n;
     const step=(tegak?size*0.55:size)+gap;
-    for(let i=0;i<n;i++){ const cc=c-W/2+gap/2+cw*(i+.5);
+    for(let i=0;i<n;i++){ const cc=c-W/2+gap/2+cw*(i+.5); lane=i; lc=cc;
       for(let al=a0+step/2+(R()-.5)*step*0.4;al<a1-step/2+gap;al+=step*(0.85+R()*0.3)){
         put(al+(R()-.5)*gap,ym+(R()-.5)*gap*0.6,cc+(R()-.5)*gap*0.6,(step-gap)/2*(0.75+R()*0.25),(hh-gap)/2*(0.8+R()*0.2),(cw-gap)/2*(0.75+R()*0.25)); } }
+    row++;
   }
   return rocks;
 }
@@ -177,6 +180,7 @@ export const trapesium=(a,B,yTop,h,c=0)=>[[c-B/2,yTop-h],[c+B/2,yTop-h],[c+a/2,y
 /* ================= mesin gambar 2D ================= */
 const IX={x:0,y:1,z:2};
 const SV={ink:'#1c1c1e',ink2:'#636366',conc:'#ececf0',stub:'#e1e1e6'};
+let clipN=0;  // nomor unik clipPath di seluruh halaman
 const SVF='-apple-system, BlinkMacSystemFont, SF Pro Text, Inter, Segoe UI, sans-serif';
 export function renderView(m,v){
   const n=IX[v.n], iu=IX[v.u], iv=IX[v.v];
@@ -190,15 +194,35 @@ export function renderView(m,v){
     if(cut && (at<lo[n]||at>hi[n])) return;
     els.push({z:0,s:`<rect x="${lo[iu]}" y="${-hi[iv]}" width="${hi[iu]-lo[iu]}" height="${hi[iv]-lo[iv]}" fill="${fillOf(c)}" stroke="${SV.ink}" stroke-width="@${sw}"/>`});
     ext(lo[iu],lo[iv]); ext(hi[iu],hi[iv]); };
+  // Pada potongan, batu tidak dipotong apa adanya (banyak batu meleset dari bidang potong sehingga gambar tampak bolong).
+  // Untuk potongan memanjang dipilih satu lajur terdekat di setiap lapis; untuk potongan melintang dipilih batu terdekat
+  // di setiap lajur. Hasilnya susunan batu per lapis yang rapi dan tetap sesuai model 3D.
+  const pickRocks=rocks=>{
+    if(!cut) return rocks; const k0=rocks[0]?.k;
+    if(k0){ const ax=k0.ax, cr=ax===2?0:2, best={};
+      if(n===cr){ rocks.forEach(r=>{ const d=Math.abs(r.k.lc-at), b=best[r.k.row]; if(!b||d<b.d) best[r.k.row]={d,lane:r.k.lane}; }); return rocks.filter(r=>best[r.k.row].lane===r.k.lane); }
+      if(n===ax){ rocks.forEach(r=>{ const key=r.k.row+'|'+r.k.lane, d=Math.abs(r.c[ax]-at), b=best[key]; if(!b||d<b.d) best[key]={d,r}; }); return Object.values(best).filter(b=>b.d<=b.r.s[ax]*1.8).map(b=>b.r); } }
+    return rocks.filter(r=>Math.abs(r.c[n]-at)<=r.s[n]*0.9);
+  };
+  // garis batas (prisma atau kotak) untuk memotong gambar batu supaya tidak keluar dari pasangan
+  const clipOutline=cl=>{
+    if(cl.box){ const b=cl.box, lo=[b[0],b[2],b[4]], hi=[b[1],b[3],b[5]]; return `<rect x="${lo[iu]}" y="${-hi[iv]}" width="${hi[iu]-lo[iu]}" height="${hi[iv]-lo[iv]}"/>`; }
+    const P=cl.prism; if(!P) return null; const pa=P.axis||'z', e0=pa==='x'?P.x0:P.z0, e1=pa==='x'?P.x1:P.z1, ys=P.pts.map(q=>q[1]), ylo=Math.min(...ys), yhi=Math.max(...ys);
+    if(v.n===pa) return `<polygon points="${P.pts.map(([a,b])=>`${a},${-b}`).join(' ')}"/>`;
+    if(v.n!=='y') return `<rect x="${e0}" y="${-yhi}" width="${e1-e0}" height="${yhi-ylo}"/>`;
+    return null;
+  };
   for(const c of m.concrete){
     if(v.skipStub&&c.kind==='stub') continue;
     if(v.skipMat&&c.mat&&v.skipMat.includes(c.mat)) continue;
     if(v.skipLayer&&c.layer&&v.skipLayer.includes(c.layer)) continue;
     if(c.box) rect(c.box,c,1.1);
     else if(c.boxes) c.boxes.forEach(b=>rect(b,c,0.45));
-    else if(c.rocks) c.rocks.forEach(r=>{ // batu: digambar sebagai elips; rotasi diabaikan di 2D
-      if(cut&&Math.abs(r.c[n]-at)>r.s[n]*0.9) return; const k2=cut?Math.sqrt(Math.max(0.15,1-((r.c[n]-at)/r.s[n])**2)):1, rx=r.s[iu]*k2, ry=r.s[iv]*k2;
-      els.push({z:0,s:`<ellipse cx="${r.c[iu].toFixed(1)}" cy="${(-r.c[iv]).toFixed(1)}" rx="${rx.toFixed(1)}" ry="${ry.toFixed(1)}" fill="${fillOf(c)}" stroke="${SV.ink}" stroke-width="@0.5"/>`}); ext(r.c[iu]-rx,r.c[iv]-ry); ext(r.c[iu]+rx,r.c[iv]+ry); });
+    else if(c.rocks){ // batu: digambar sebagai elips utuh; rotasi diabaikan di 2D
+      let g=''; pickRocks(c.rocks).forEach(r=>{ const rx=r.s[iu], ry=r.s[iv];
+        g+=`<ellipse cx="${r.c[iu].toFixed(1)}" cy="${(-r.c[iv]).toFixed(1)}" rx="${rx.toFixed(1)}" ry="${ry.toFixed(1)}" fill="${fillOf(c)}" stroke="${SV.ink}" stroke-width="@0.5"/>`; ext(r.c[iu]-rx,r.c[iv]-ry); ext(r.c[iu]+rx,r.c[iv]+ry); });
+      const cp=c.clip&&clipOutline(c.clip);
+      if(cp){ const id=`rk${++clipN}`; els.push({z:0,s:`<clipPath id="${id}">${cp}</clipPath><g clip-path="url(#${id})">${g}</g>`}); } else els.push({z:0,s:g}); }
     else if(c.cyl){ const {x,z,r,y0:ya,y1:yb}=c.cyl;
       if(v.n==='y'){ if(cut&&(at<ya||at>yb)) continue; const cu=iu===0?x:z, cv=iv===0?x:z; els.push({z:0,s:`<circle cx="${cu}" cy="${-cv}" r="${r}" fill="${fillOf(c)}" stroke="${SV.ink}" stroke-width="@1.1"/>`}); ext(cu-r,cv-r); ext(cu+r,cv+r); }
       else { const cn=v.n==='x'?x:z, cu=v.u==='x'?x:z; let w=r; if(cut){ const d=Math.abs(at-cn); if(d>r) continue; w=Math.sqrt(r*r-d*d);}
@@ -231,13 +255,14 @@ export function renderView(m,v){
   }
   if(!isFinite(x0)){ x0=-100;x1=100;y0=-100;y1=100; }
   const W=x1-x0, H=y1-y0; const padF=v.pad??0.16; const k=Math.max((W*(1+2*padF))/(v.w2?170:340),(H*(1+2*padF))/(v.maxH||460));
-  // dimensi dan catatan
+  // dimensi dan catatan; teks diberi tepi berwarna latar supaya tetap terbaca di atas batu, bata, atau tulangan
+  const halo=`stroke="#ffffff" stroke-width="${2.8*k}" stroke-linejoin="round" paint-order="stroke"`;
   for(const d of v.dims||[]){
     const [ua,va]=d.a,[ub,vb]=d.b, col=d.c||SV.ink2, off=(d.off||0)*k, t=4*k;
-    if(Math.abs(va-vb)<1e-6){ const yy=-va-off; els.push({z:3,s:`<g stroke="${col}" stroke-width="${0.8*k}"><line x1="${ua}" y1="${yy}" x2="${ub}" y2="${yy}"/><line x1="${ua}" y1="${yy-t}" x2="${ua}" y2="${yy+t}"/><line x1="${ub}" y1="${yy-t}" x2="${ub}" y2="${yy+t}"/></g><text x="${(ua+ub)/2}" y="${yy-4*k}" font-size="${10*k}" text-anchor="middle" fill="${col}" font-family="${SVF}" font-variant-numeric="tabular-nums">${d.t}</text>`}); y0=Math.min(y0,yy-14*k); y1=Math.max(y1,yy+6*k); }
-    else { const xx=ua+off; els.push({z:3,s:`<g stroke="${col}" stroke-width="${0.8*k}"><line x1="${xx}" y1="${-va}" x2="${xx}" y2="${-vb}"/><line x1="${xx-t}" y1="${-va}" x2="${xx+t}" y2="${-va}"/><line x1="${xx-t}" y1="${-vb}" x2="${xx+t}" y2="${-vb}"/></g><text x="${xx-5*k}" y="${-(va+vb)/2}" font-size="${10*k}" text-anchor="middle" fill="${col}" font-family="${SVF}" font-variant-numeric="tabular-nums" transform="rotate(-90 ${xx-5*k} ${-(va+vb)/2})">${d.t}</text>`}); x0=Math.min(x0,xx-16*k); x1=Math.max(x1,xx+6*k); }
+    if(Math.abs(va-vb)<1e-6){ const yy=-va-off; els.push({z:3,s:`<g stroke="${col}" stroke-width="${0.8*k}"><line x1="${ua}" y1="${yy}" x2="${ub}" y2="${yy}"/><line x1="${ua}" y1="${yy-t}" x2="${ua}" y2="${yy+t}"/><line x1="${ub}" y1="${yy-t}" x2="${ub}" y2="${yy+t}"/></g><text x="${d.side==='r'?Math.max(ua,ub)+5*k:d.side==='l'?Math.min(ua,ub)-5*k:(ua+ub)/2}" y="${d.side?yy+3.5*k:yy-4*k}" font-size="${10*k}" text-anchor="${d.side==='r'?'start':d.side==='l'?'end':'middle'}" fill="${col}" font-family="${SVF}" font-variant-numeric="tabular-nums" ${halo}>${d.t}</text>`}); y0=Math.min(y0,yy-14*k); y1=Math.max(y1,yy+6*k); if(d.side==='r') x1=Math.max(x1,Math.max(ua,ub)+5*k+d.t.length*5.6*k); if(d.side==='l') x0=Math.min(x0,Math.min(ua,ub)-5*k-d.t.length*5.6*k); }
+    else { const xx=ua+off; els.push({z:3,s:`<g stroke="${col}" stroke-width="${0.8*k}"><line x1="${xx}" y1="${-va}" x2="${xx}" y2="${-vb}"/><line x1="${xx-t}" y1="${-va}" x2="${xx+t}" y2="${-va}"/><line x1="${xx-t}" y1="${-vb}" x2="${xx+t}" y2="${-vb}"/></g><text x="${xx-5*k}" y="${-(va+vb)/2}" font-size="${10*k}" text-anchor="middle" fill="${col}" font-family="${SVF}" font-variant-numeric="tabular-nums" ${halo} transform="rotate(-90 ${xx-5*k} ${-(va+vb)/2})">${d.t}</text>`}); x0=Math.min(x0,xx-16*k); x1=Math.max(x1,xx+6*k); }
   }
-  for(const nt of v.notes||[]){ const [u,w]=nt.at; els.push({z:3,s:`<text x="${u}" y="${-w}" font-size="${10*k*(nt.s||1)}" text-anchor="${nt.a||'middle'}" fill="${nt.c||SV.ink2}" font-family="${SVF}" font-variant-numeric="tabular-nums">${nt.t}</text>`}); ext(u,w); }
+  for(const nt of v.notes||[]){ const [u,w]=nt.at; els.push({z:3,s:`<text x="${u}" y="${-w}" font-size="${10*k*(nt.s||1)}" text-anchor="${nt.a||'middle'}" fill="${nt.c||SV.ink2}" font-family="${SVF}" font-variant-numeric="tabular-nums" ${halo}>${nt.t}</text>`}); ext(u,w); }
   const px=(x1-x0)*0.05+4*k, py=(y1-y0)*0.05+4*k;
   const vb=[x0-px,y0-py,(x1-x0)+2*px,(y1-y0)+2*py];
   const body=els.sort((a,b)=>a.z-b.z).map(e=>e.s.replace(/@([\d.]+)/g,(_,q)=>String(+q*k)).replace(/#([\d.]+)#/g,(_,q)=>String(Math.max(+q,1.1*k)))).join('');

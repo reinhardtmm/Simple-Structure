@@ -59,7 +59,7 @@ export default {
       const tr=turtle(L+bk/2+a,y-60,Math.PI/2); tr.fwd(60-rA).turn(90,rA).fwd(La-rA); bars.push({pts:tr.pts.map(([x,yy])=>[x,yy,0]),d:dAng,layer:'angkur',color:COL.dowel,info:iA});
     });
     const area=L*H/1e6, sA=nAng*w.ch, jr=bt.ringan?[2,5]:[8,15], yA0=ys[0]??H/2;
-    const labels=[{p:[L/2,H+hr+90,0],t:`luas bidang ${fmt(area,2)} m²`},{p:[-bk/2,H*0.62,bk/2+30],t:'kolom praktis'},{p:[L*0.25,-hs-40,bs/2],t:'sloof'},{p:[L*0.25,H+hr+30,br/2],t:'ring balok'},
+    const labels=[{p:[L/2,H+hr+90,0],t:`luas bidang ${fmt(area,2)} m²`,follow:'bata'},{p:[-bk/2,H*0.62,bk/2+30],t:'kolom praktis'},{p:[L*0.25,-hs-40,bs/2],t:'sloof'},{p:[L*0.25,H+hr+30,br/2],t:'ring balok'},
       ...(tooth?[{p:[0,H*0.35,T/2+10],t:'gigi bata',c:'lap'}]:[]),...(ys.length?[{p:[La*0.55,yA0+50,0],t:`angkur tiap ${nAng} lapis`,c:'conf'}]:[])];
     // pemeriksaan
     const {C,add}=checker();

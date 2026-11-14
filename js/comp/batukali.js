@@ -28,8 +28,8 @@ export default {
     const urug=sg=>[[sg*W/2,-hf-ta],[sg*B/2,-hf-ta],[sg*B/2,-hf],[sg*a/2,0],[sg*bs/2,0],[sg*bs/2,mt],[sg*W/2,mt]];
     const concrete=[
       {prism:{pts:trapesium(a,B,0,hf),z0,z1},mat:'spesi',layer:'spesi'},
-      {rocks,mat:'batu',layer:'batu'},
-      ...(ta>0?[{box:[-B/2,B/2,-hf-ta,-hf,z0,z1],mat:'pasir',layer:'alas',edges:false},{rocks:ast,mat:'aanstamping',layer:'alas'}]:[]),
+      {rocks,mat:'batu',layer:'batu',clip:{prism:{pts:trapesium(a,B,0,hf),z0,z1}}},
+      ...(ta>0?[{box:[-B/2,B/2,-hf-ta,-hf,z0,z1],mat:'pasir',layer:'alas',edges:false},{rocks:ast,mat:'aanstamping',layer:'alas',clip:{box:[-B/2,B/2,-hf-ta,-hf,z0,z1]}}]:[]),
       ...(tp>0?[{box:[-W/2,W/2,yBot,-hf-ta,z0,z1],mat:'pasir',layer:'alas'}]:[]),
       {prism:{pts:urug(-1),z0,z1},mat:'urug',layer:'tanah'},{prism:{pts:urug(1),z0,z1},mat:'urug',layer:'tanah'},
       {box:[-W/2-600,-W/2,yBot-250,mt,z0,z1],mat:'tanah',layer:'tanah'},{box:[W/2,W/2+600,yBot-250,mt,z0,z1],mat:'tanah',layer:'tanah'},
@@ -68,7 +68,8 @@ export default {
     add(null,'Batas penggunaan','fondasi batu kali tidak diatur SNI 2847:2019. Untuk gedung bertingkat atau tanah lunak gunakan fondasi beton bertulang','praktik');
     const views=[
       {title:'Potongan melintang fondasi',sub:`batu kali 1 PC : ${p.campuran.split(':')[1]} Ps, sloof ${bs} × ${hs}`,n:'z',at:(za[0]??0)+2,half:dAng*2,u:'x',v:'y',maxH:560,
-        dims:[{a:[-a/2,0],b:[a/2,0],off:-22,t:`a = ${a}`},{a:[-B/2,-hf],b:[B/2,-hf],off:-10,t:`B = ${B}`},{a:[-W/2,yBot],b:[W/2,yBot],off:-18,t:`galian ${fmt(W)}`},
+        // garis a tepat di bawah puncak pasangan (di atasnya ada sloof) dengan teks di sisi kanan, di luar pasangan; B dan lebar galian di bawah dasar galian supaya tidak menumpuk dengan batu
+        dims:[{a:[-a/2,0],b:[a/2,0],off:-8,side:'r',t:`a = ${a}`},{a:[-B/2,yBot],b:[B/2,yBot],off:-12,t:`B = ${B}`},{a:[-W/2,yBot],b:[W/2,yBot],off:-30,t:`galian ${fmt(W)}`},
           {a:[W/2+620,-hf],b:[W/2+620,0],off:14,t:`${hf}`},{a:[W/2+620,0],b:[W/2+620,mt],off:14,t:`${mt}`},...(ta+tp>0?[{a:[W/2+620,yBot],b:[W/2+620,-hf],off:14,t:`${ta+tp}`}]:[])]},
       {title:'Potongan memanjang di sumbu fondasi',sub:'susunan batu per lapis; elips adalah batu yang terpotong',n:'x',at:0,half:size*0.3,u:'z',v:'y',skipMat:['tanah','urug'],maxH:320}
     ];

@@ -36,7 +36,8 @@ const SYS_TEXT={
 const clone=o=>JSON.parse(JSON.stringify(o));
 const state={comp:'balok',sys:'SRPMK',params:{},vis:{},viewBy:{},view:{labels:true}};
 // transparansi, potong, dan urai disimpan per komponen agar tidak saling memengaruhi
-const VDEF={xray:0.72,cut:1,explode:0};
+// cut0 dan cut adalah dua ujung slider Potong (fraksi sepanjang sumbu potong): yang tersisa hanya bagian di antaranya
+const VDEF={xray:0.72,cut0:0,cut:1,explode:0};
 const V=()=>state.viewBy[state.comp]??={...VDEF};
 for(const c of Object.values(COMPS)){ state.params[c.id]=clone(c.defaults); state.vis[c.id]={}; }
 const sysKey=c=>c.sysDependent?state.sys:'ALL';
@@ -57,7 +58,10 @@ controls.enableDamping=true; controls.dampingFactor=0.1;
 scene.add(new THREE.HemisphereLight(0xffffff,0xb4b7bf,2.2));
 const dl=new THREE.DirectionalLight(0xffffff,2.2); dl.position.set(4,7,5); scene.add(dl);
 const dl2=new THREE.DirectionalLight(0xffffff,0.8); dl2.position.set(-5,3,-4); scene.add(dl2);
-const clip=new THREE.Plane(new THREE.Vector3(-1,0,0),1e6), clips=[clip];
+// Dua bidang potong: clip memotong dari sisi atas sumbu (ujung kanan slider), clip2 dari sisi bawah (ujung kiri).
+// Bila kedua ujung digeser ke tengah, yang tersisa irisan di tengah model.
+const clip=new THREE.Plane(new THREE.Vector3(-1,0,0),1e6), clip2=new THREE.Plane(new THREE.Vector3(1,0,0),1e6), clips=[clip,clip2];
+const inCut=p=>clip.distanceToPoint(p)>=0&&clip2.distanceToPoint(p)>=0;
 const M={
   concrete:new THREE.MeshStandardMaterial({color:0xc4c6cc,roughness:.95,transparent:true,opacity:.28,depthWrite:false,clippingPlanes:clips,side:THREE.DoubleSide}),
   stub:new THREE.MeshStandardMaterial({color:0xb0b3ba,roughness:.95,transparent:true,opacity:.18,depthWrite:false,clippingPlanes:clips,side:THREE.DoubleSide}),
@@ -133,6 +137,21 @@ const root=new THREE.Group(); scene.add(root);
 let staged=[], groups={}, pickables=[], labels=[], model=null, selected=null, cutRange=null, layerDefs=[];
 
 function clearRoot(){ root.traverse(o=>{ if(o.geometry&&!o.geometry.userData.cached) o.geometry.dispose(); }); root.clear(); }
+// Label tanpa 'follow' ikut bergeser bersama kelompoknya saat diurai. Kelompok dipilih lewat nama lebih dulu (kata di label
+// yang juga ada di nama lapisan, misalnya 'sloof' ke 'Tulangan sloof'), lalu lewat jarak bila ada beberapa yang cocok
+// atau tidak ada yang cocok. Pada jarak, kelompok tulangan dan material diberi bonus 150 mm dibanding beton.
+const STOPW=new Set(['tulangan','dan','tiap','lapis','untuk','yang','dengan','sengkang']);
+const wordsOf=t=>norm(t).replace(/[^a-z ]/g,' ').split(/\s+/).filter(w=>w.length>=3&&!STOPW.has(w));
+function autoFollow(){
+  if(!labels.some(L=>L.follow===undefined)) return;
+  const bx=[]; for(const [k,g] of Object.entries(groups)) for(const o of g.children) bx.push([k,new THREE.Box3().setFromObject(o)]);
+  const lw=layerDefs.filter(L=>groups[L.k]).map(L=>[L.k,wordsOf(L.label)]), q=new THREE.Vector3();
+  labels.forEach(L=>{ if(L.follow!==undefined) return; const w=wordsOf(L.t);
+    let top=0, cand=null; for(const [k,ws] of lw){ const sc=w.filter(x=>ws.includes(x)).length; if(sc>top){ top=sc; cand=new Set([k]); } else if(sc&&sc===top) cand.add(k); }
+    q.set(L.p[0]*S,L.p[1]*S,L.p[2]*S); let best='beton', bd=Infinity;
+    for(const [k,b] of bx){ if(cand&&!cand.has(k)) continue; const d=b.distanceToPoint(q)/S-(k==='beton'||k==='zona'?0:150); if(d<bd){ bd=d; best=k; } }
+    L._g=best; });
+}
 function build3D(m){
   clearRoot(); pickables=[]; groups={}; staged=[]; seq.tw=null;
   const G=k=>groups[k]??=(()=>{const g=new THREE.Group(); g.name=k; root.add(g); return g;})();
@@ -144,6 +163,7 @@ function build3D(m){
   for(const [k,g] of geoSpare){ if(geoSpare.size<=2500) break; g.dispose(); geoSpare.delete(k); }
   labels=m.labels||[];
   layerDefs=[{k:'beton',label:'Beton',color:'#c9c4b8',ex:m.betonEx||[0,0,0]},...m.layers.filter(l=>groups[l.k]),...((m.zones||[]).length?[{k:'zona',label:'Zona daerah khusus',color:'#0f766e',ex:m.betonEx||[0,0,0],zone:true}]:[])];
+  autoFollow();
   // rentang potong
   const bb=new THREE.Box3().setFromObject(root); const ax=m.cutAxis||'x';
   cutRange={axis:ax,min:bb.min[ax],max:bb.max[ax]};
@@ -171,7 +191,10 @@ function applyView(){
   M.concrete.depthWrite=op>0.97; M.edge.opacity=0.25+op*0.5;
   for(const mm of masonMat.values()){ mm.opacity=Math.max(0.1,1-0.8*v.xray); mm.depthWrite=mm.opacity>0.97; }
   for(const L of layerDefs){ const g=groups[L.k]; if(!g) continue; g.visible=isOn(L); const e=L.ex||[0,0,0]; g.position.set(e[0]*S*v.explode,e[1]*S*v.explode,e[2]*S*v.explode); }
-  if(cutRange){ const a=cutRange.axis; clip.normal.set(a==='x'?-1:0,a==='y'?-1:0,a==='z'?-1:0); const c=cutRange.min+(cutRange.max-cutRange.min)*v.cut; clip.constant=(v.cut>=0.999||!Number.isFinite(c))?1e6:c; }
+  if(cutRange){ const a=cutRange.axis, lo=cutRange.min, hi=cutRange.max, ok=Number.isFinite(lo+hi);
+    clip.normal.set(a==='x'?-1:0,a==='y'?-1:0,a==='z'?-1:0); clip2.normal.copy(clip.normal).negate();
+    clip.constant=ok&&v.cut<0.999?lo+(hi-lo)*v.cut:1e6;
+    clip2.constant=ok&&v.cut0>0.001?-(lo+(hi-lo)*v.cut0):1e6; }
   invalidate();
 }
 /* label */
@@ -182,8 +205,8 @@ function drawLabels(){
   for(const L of labels){
     _v.set(L.p[0]*S,L.p[1]*S,L.p[2]*S);
     if(seq.on&&L.stage!=null&&L.stage>seq.step) continue;
-    const g=groups[L.follow||'beton']; if(L.follow!==null && g){ if(!g.visible && L.follow) continue; _v.add(g.position); }
-    if(clip.distanceToPoint(_v)<0) continue;
+    const g=groups[L.follow||L._g||'beton']; if(L.follow!==null && g){ if(!g.visible && L.follow) continue; _v.add(g.position); }
+    if(!inCut(_v)) continue;
     _v.project(camera); if(_v.z>1) continue;
     html+=`<div class="lbl ${L.c||'dim'}" style="left:${(_v.x*.5+.5)*w}px;top:${(-_v.y*.5+.5)*h}px">${L.t}</div>`;
   }
@@ -197,7 +220,7 @@ renderer.domElement.addEventListener('pointerup',e=>{
   const r=renderer.domElement.getBoundingClientRect();
   if(document.pointerLockElement===renderer.domElement) mv.set(0,0); else mv.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);
   ray.setFromCamera(mv,camera);
-  const hits=ray.intersectObjects(pickables,false).filter(h=>clip.distanceToPoint(h.point)>=0 && h.object.parent.visible);
+  const hits=ray.intersectObjects(pickables,false).filter(h=>inCut(h.point) && h.object.parent.visible);
   select(hits[0]?.object||null);
 });
 function select(o){
@@ -229,7 +252,7 @@ let rzT=0; new ResizeObserver(()=>{ clearTimeout(rzT); if(document.body.classLis
 const seq={on:false,step:0,playing:false,tw:null,doneAt:0,dur:3000,lastTw:1000};
 try{ const d=Number(localStorage.getItem('atlas-tulangan-seqdur')); if(d>=1500&&d<=8000) seq.dur=d; }catch(e){}
 const pourPlane=new THREE.Plane(new THREE.Vector3(0,-1,0),0), pourCache=new Map();
-const pourMatOf=m=>{ if(!pourCache.has(m)){ const c=m.clone(); c.clippingPlanes=[clip,pourPlane]; pourCache.set(m,c); } const c=pourCache.get(m); c.opacity=m.opacity; c.depthWrite=m.depthWrite; return c; };
+const pourMatOf=m=>{ if(!pourCache.has(m)){ const c=m.clone(); c.clippingPlanes=[clip,clip2,pourPlane]; pourCache.set(m,c); } const c=pourCache.get(m); c.opacity=m.opacity; c.depthWrite=m.depthWrite; return c; };
 function finishTween(){ const tw=seq.tw; if(!tw) return; tw.bars.forEach(o=>o.position.y=0);
   tw.pours.forEach(o=>{ if(o.userData.mat0){ o.material=o.userData.mat0; o.userData.mat0=null; } o.children.forEach(ch=>ch.visible=true); }); seq.tw=null; seq.doneAt=performance.now(); }
 function startTween(){
@@ -528,8 +551,31 @@ document.getElementById('nav').addEventListener('keydown',e=>{ if(e.target.id!==
     if(first.dataset.comp){ navQ=''; goComp(first.dataset.comp); } else first.querySelector('input:not(:disabled)')?.click(); } });
 document.getElementById('tabs').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; document.querySelectorAll('#tabs button').forEach(x=>x.classList.toggle('on',x===b)); document.querySelectorAll('.pane').forEach(p=>p.classList.toggle('on',p.id==='pane-'+b.dataset.tab)); if(b.dataset.tab==='gambar'&&drawDirty) renderDrawings(model); });
 const bindRange=(id,k)=>{ const el=document.getElementById(id); el.addEventListener('input',e=>{ V()[k]=Number(e.target.value); applyView(); }); el.addEventListener('change',save); };
-const syncSliders=()=>{ const v=V(); for(const k of ['xray','cut','explode']) document.getElementById(k).value=v[k]; };
-bindRange('xray','xray'); bindRange('cut','cut'); bindRange('explode','explode');
+// Slider Potong punya dua ujung (dua input range yang ditumpuk). Keduanya boleh bertemu, tetapi tidak saling melewati.
+// Mouse dan sentuhan ditangani di wadahnya: ujung terdekat yang digeser, dan bila kedua ujung bertumpuk, arah seret
+// pertama yang menentukan. Input range tetap dipakai untuk keyboard.
+const CUT_GAP=0.01, cutDual=document.getElementById('cutDual'), cutLo=document.getElementById('cut0'), cutHi=document.getElementById('cut');
+const paintCut=()=>{ const v=V(); cutDual.style.setProperty('--a',v.cut0); cutDual.style.setProperty('--b',v.cut); };
+const setCut=(lo,val)=>{ const v=V(); val=Math.round(val*200)/200;
+  if(lo) v.cut0=Math.max(0,Math.min(val,v.cut-CUT_GAP)); else v.cut=Math.min(1,Math.max(val,v.cut0+CUT_GAP));
+  cutLo.value=v.cut0; cutHi.value=v.cut; paintCut(); applyView(); };
+cutLo.addEventListener('input',()=>setCut(true,Number(cutLo.value)));
+cutHi.addEventListener('input',()=>setCut(false,Number(cutHi.value)));
+cutLo.addEventListener('change',save); cutHi.addEventListener('change',save);
+const cutAt=x=>{ const r=cutDual.getBoundingClientRect(); return Math.min(1,Math.max(0,(x-r.left-8)/(r.width-16))); };
+let cutDrag=null;
+cutDual.addEventListener('pointerdown',e=>{ if(e.button!==0) return; e.preventDefault();
+  const v=V(), x=cutAt(e.clientX), dl=Math.abs(x-v.cut0), dh=Math.abs(x-v.cut);
+  cutDrag={x0:e.clientX, lo:Math.abs(dl-dh)<0.02?null:dl<dh};
+  cutDual.setPointerCapture(e.pointerId);
+  if(cutDrag.lo!==null){ (cutDrag.lo?cutLo:cutHi).focus({preventScroll:true,focusVisible:false}); setCut(cutDrag.lo,x); } });
+cutDual.addEventListener('pointermove',e=>{ if(!cutDrag) return;
+  if(cutDrag.lo===null){ const dx=e.clientX-cutDrag.x0; if(Math.abs(dx)<2) return; cutDrag.lo=dx<0; (cutDrag.lo?cutLo:cutHi).focus({preventScroll:true,focusVisible:false}); }
+  setCut(cutDrag.lo,cutAt(e.clientX)); });
+const cutEnd=()=>{ if(cutDrag){ cutDrag=null; save(); } };
+cutDual.addEventListener('pointerup',cutEnd); cutDual.addEventListener('pointercancel',cutEnd);
+const syncSliders=()=>{ const v=V(); for(const k of ['xray','cut0','cut','explode']) document.getElementById(k).value=v[k]; paintCut(); };
+bindRange('xray','xray'); bindRange('explode','explode');
 document.getElementById('labelsOn').onchange=e=>{state.view.labels=e.target.checked; invalidate();};
 document.getElementById('resetCam').onclick=fitCamera;
 
@@ -564,7 +610,10 @@ function readShared(){
 }
 try{ const sv=JSON.parse(localStorage.getItem('atlas-tulangan-v2')||'null');
   if(sv){ for(const id in COMPS){ for(const k in state.params[id]) Object.assign(state.params[id][k],sv.params?.[id]?.[k]||{}); Object.assign(state.vis[id],sv.vis?.[id]||{}); }
-    for(const id in sv.viewBy||{}) if(COMPS[id]) state.viewBy[id]={...VDEF,...sv.viewBy[id]};
+    for(const id in sv.viewBy||{}) if(COMPS[id]){ const w={...VDEF,...sv.viewBy[id]};
+      // simpanan lama: switch 'potong dari dua sisi' dengan cut sebagai lebar irisan tengah
+      if('cut2' in w){ if(w.cut2&&w.cut<0.999){ const h=Math.max(w.cut,0.01)/2; w.cut0=0.5-h; w.cut=0.5+h; } delete w.cut2; }
+      state.viewBy[id]=w; }
     if(COMPS[sv.comp]) state.comp=sv.comp; if(sv.sys) state.sys=sv.sys; } }catch(e){}
 const hash=(location.hash||'').slice(1); if(COMPS[hash]) state.comp=hash;
 try{ readShared(); }catch(e){ console.warn('Tautan berbagi tidak bisa dibaca:',e); }
@@ -597,6 +646,6 @@ try{ const ly=JSON.parse(localStorage.getItem('atlas-tulangan-layout')||'null');
 renderNav(); resize(); update(true);
 if(sharedOpen) setTimeout(()=>toast('Membuka model dari tautan berbagi.'),300);
 window.addEventListener('hashchange',()=>{ const h=(location.hash||'').slice(1); if(COMPS[h]&&h!==state.comp){ state.comp=h; renderNav(); update(true); } });
-window.__atlas={state,update,camera,get timing(){return timing;},get pickables(){return pickables;},COMPS,
+window.__atlas={state,update,camera,get timing(){return timing;},get labels(){return labels.map(L=>({t:L.t,group:L.follow||L._g||'beton'}));},get pickables(){return pickables;},COMPS,
   // kait pengujian: memajukan animasi urutan tanpa menunggu frame (berguna saat tab di latar)
   seq:{state:seq,tick:t=>{ tweenStep(t); seqTick(t); },open:seqOpen,close:seqClose,go:seqGo,get staged(){return staged;}}};

@@ -99,8 +99,8 @@ export default {
       bkX0=fk==='telapak'?Bf/2+50:fk==='tiang'?capX/2+50:-300; bkX1=Lb-bkX0;
       const a=300, B=600, wT=y=>B+(a-B)*(y-(yBKtop-hBK))/hBK;
       cp('bk',{prism:{axis:'x',pts:trapesium(a,B,yBKtop,hBK),x0:bkX0,x1:bkX1},mat:'spesi',layer:'batukali'},
-        {rocks:rubble({axis:'x',a0:bkX0,a1:bkX1,y0:yBKtop-hBK,y1:yBKtop,width:wT,size:200,gap:25,seed:3}),mat:'batu',layer:'batukali'},
-        {rocks:rubble({axis:'x',a0:bkX0,a1:bkX1,y0:yBKtop-hBK-150,y1:yBKtop-hBK,width:()=>B,size:200,gap:15,tegak:true,seed:9}),mat:'aanstamping',layer:'batukali'});
+        {rocks:rubble({axis:'x',a0:bkX0,a1:bkX1,y0:yBKtop-hBK,y1:yBKtop,width:wT,size:200,gap:25,seed:3}),mat:'batu',layer:'batukali',clip:{prism:{axis:'x',pts:trapesium(a,B,yBKtop,hBK),x0:bkX0,x1:bkX1}}},
+        {rocks:rubble({axis:'x',a0:bkX0,a1:bkX1,y0:yBKtop-hBK-150,y1:yBKtop-hBK,width:()=>B,size:200,gap:15,tegak:true,seed:9}),mat:'aanstamping',layer:'batukali',clip:{box:[bkX0,bkX1,yBKtop-hBK-150,yBKtop-hBK,-B/2,B/2]}});
       labels.push({p:[(bkX0+bkX1)/2,yBKtop-hBK/2,B/2+40],t:'fondasi batu kali',stage:'bk'});
       if(hasS){ const iA={t:'Angkur sloof ke batu kali D10',b:['Ditanam di pasangan batu kali dan masuk ke sloof, jarak paling jauh 1 m.'],pasal:PU};
         spread(bkX0+200,bkX1-200,1000).forEach(x=>{ const t=turtle(x,yBKtop-300,PI/2); t.fwd(300+hs-sCov-sds-dbs-60).turn(-90,20).fwd(80); push(t.pts.map(([xx,y])=>[xx,y,0]),10,'angkur',COL.dowel,iA,'bk'); }); }
@@ -274,7 +274,7 @@ export default {
       const kb=200, hbb=450, bbb=250, bx0=X1-150, bx1=X2+wd+150, zb0=W+xF;
       const mapC=(c,lane)=>({prism:{axis:'x',pts:c.prism.pts.map(([x,y])=>lane===1?[W+x,y]:[W+Lr-x,y+H2]),x0:(lane===1?X1:X2)+c.prism.z0,x1:(lane===1?X1:X2)+c.prism.z1}});
       cp('tg2',...m1.concrete.filter(c=>c.prism).map(c=>({...mapC(c,1),layer:'tanggaB'})),...m2.concrete.filter(c=>c.prism).map(c=>({...mapC(c,2),layer:'tanggaB'})),
-        {box:[X1+wd,X2,H2-tt,H2,W+Lr,W+xF],layer:'tanggaB'},                                             // bordes di antara dua lajur
+        {box:[X1+wd,X2+wd,H2-tt,H2,W+Lr,W+xF],layer:'tanggaB'},                                          // bordes: celah antar lajur dan seluruh lebar lajur kedua
         {box:[bx0,bx1,H2-hbb,H2,zb0,zb0+bbb],layer:'tanggaB'});                                         // balok bordes
       // Bordes ditumpu balok bordes, dan balok bordes ditumpu dua kolom tangga di atas fondasi setempat.
       // Lantai dasar di bawah ruang tangga menjadi pijakan kaki tangga, supaya tangga tidak tampak melayang.
