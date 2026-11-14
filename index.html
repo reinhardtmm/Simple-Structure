@@ -34,6 +34,8 @@
   --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
   --view-bg:radial-gradient(70% 60% at 12% 8%,rgba(120,170,255,.28),transparent 60%),radial-gradient(60% 55% at 92% 95%,rgba(255,170,120,.22),transparent 60%),radial-gradient(50% 45% at 85% 10%,rgba(160,230,200,.18),transparent 60%),linear-gradient(180deg,#f4f6fa,#eceef3);
   --glass-text:rgba(0,0,0,.72); --glass-sep:rgba(60,60,67,.12);
+  /* halaman utama: pita utama, pita selang-seling, hover kartu, dan pita gelap */
+  --h-a:#ffffff; --h-b:#f5f5f7; --h-bh:#ececf0; --h-dark:#1d1d1f;
   color-scheme:light;
 }
 /* mode gelap: mengikuti sistem (Otomatis) atau dipilih manual lewat data-theme */
@@ -46,6 +48,7 @@
   --material:rgba(28,28,30,.72); --shadow:0 8px 28px rgba(0,0,0,.5),0 0 0 .5px rgba(255,255,255,.08);
   --view-bg:radial-gradient(70% 60% at 12% 8%,rgba(60,110,255,.22),transparent 60%),radial-gradient(60% 55% at 92% 95%,rgba(255,120,60,.14),transparent 60%),radial-gradient(50% 45% at 85% 10%,rgba(60,200,160,.10),transparent 60%),linear-gradient(180deg,#17181c,#0e0f12);
   --glass-text:rgba(255,255,255,.78); --glass-sep:rgba(255,255,255,.10);
+  --h-a:#000000; --h-b:#1c1c1e; --h-bh:#242426; --h-dark:#161617;
   color-scheme:dark;
 } }
 :root[data-theme=dark]{
@@ -57,6 +60,7 @@
   --material:rgba(28,28,30,.72); --shadow:0 8px 28px rgba(0,0,0,.5),0 0 0 .5px rgba(255,255,255,.08);
   --view-bg:radial-gradient(70% 60% at 12% 8%,rgba(60,110,255,.22),transparent 60%),radial-gradient(60% 55% at 92% 95%,rgba(255,120,60,.14),transparent 60%),radial-gradient(50% 45% at 85% 10%,rgba(60,200,160,.10),transparent 60%),linear-gradient(180deg,#17181c,#0e0f12);
   --glass-text:rgba(255,255,255,.78); --glass-sep:rgba(255,255,255,.10);
+  --h-a:#000000; --h-b:#1c1c1e; --h-bh:#242426; --h-dark:#161617;
   color-scheme:dark;
 }
 @media (prefers-color-scheme: dark){ :root:not([data-theme=light]) body{
@@ -136,6 +140,8 @@ body.hide-nav main{--navW:0px}
 body.hide-side main{--sideW:0px}
 body.hide-nav nav,body.hide-side aside{visibility:hidden;opacity:0;overflow:hidden;border:0;padding-left:0;padding-right:0}
 @media (prefers-reduced-motion: reduce){ main,nav,aside{transition:none} }
+/* kurangi gerakan: semua transisi dan animasi CSS (switch, toast, segmented control, titik tahap, panah lipat) langsung ke keadaan akhir */
+@media (prefers-reduced-motion: reduce){ *,*::before,*::after{transition-duration:.01ms!important;animation-duration:.01ms!important;animation-iteration-count:1!important} }
 
 /* sidebar */
 nav{border-right:.5px solid var(--sep);padding:12px 10px 20px;overflow:auto;background:var(--bg)}
@@ -257,10 +263,13 @@ input.sw:disabled{opacity:.4;cursor:default}
 .sq-txt b{font-size:14.5px;font-weight:600;letter-spacing:-.01em;line-height:1.3}
 .sq-x{flex:none;width:24px;height:24px;border:0;border-radius:50%;background:var(--fill);color:var(--label2);cursor:pointer;font-size:11px;padding:0;align-self:flex-start}
 .seqbar p{margin:8px 2px 10px;font-size:12.5px;line-height:1.45;color:var(--glass-text)}
-.sq-dots{display:flex;gap:4px;margin:0 2px}
-.sq-dots button{flex:1;height:6px;border:0;border-radius:3px;background:var(--fill);cursor:pointer;padding:0;transition:background .2s}
-.sq-dots button.done{background:color-mix(in srgb,var(--tint) 45%,transparent)}
-.sq-dots button.cur{background:var(--tint)}
+/* titik tahap: batang 6 px, tetapi area klik setinggi 24 px supaya mudah diketuk; margin negatif menjaga jarak tampilan */
+.sq-dots{display:flex;gap:4px;margin:-9px 2px}
+.sq-dots button{flex:1;position:relative;height:24px;border:0;background:none;cursor:pointer;padding:0;border-radius:4px}
+.sq-dots button::before{content:'';position:absolute;left:0;right:0;top:9px;height:6px;border-radius:3px;background:var(--fill);transition:background .2s}
+.sq-dots button:hover::before{background:color-mix(in srgb,var(--tint) 30%,var(--fill))}
+.sq-dots button.done::before{background:color-mix(in srgb,var(--tint) 45%,transparent)}
+.sq-dots button.cur::before{background:var(--tint)}
 .sq-dur{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--label2);margin:10px 2px 0}
 .sq-dur input{flex:1;accent-color:var(--tint)}
 .sq-dur output{min-width:44px;text-align:right;color:var(--label);font-weight:500}
@@ -377,6 +386,85 @@ aside{border-left:.5px solid var(--sep);display:flex;flex-direction:column;min-h
 .prose .pasal{display:inline-block;font-size:11.5px;font-weight:500;color:var(--acc);background:var(--fill2);padding:1px 7px;border-radius:999px;white-space:nowrap}
 .prose .box{background:rgba(0,122,255,.08);padding:10px 12px;border-radius:var(--r-m);margin:12px 0;font-size:13.5px;color:rgba(60,60,67,.85)}
 
+/* ===== halaman utama =====
+   Pita disusun selang-seling: pembuka bergradasi lembut dengan model 3D, pita gelap fitur, kartu komponen, rujukan.
+   Satu warna aksi (--tint), tombol berbentuk pil, dan pergantian warna pita sebagai pemisah, bukan garis atau bayangan.
+   Hanya model 3D yang diberi bayangan (elips di bawahnya). */
+.brand a{color:inherit;text-decoration:none;border-radius:6px}
+.brand a:hover b{color:var(--tint)}
+body.home main{display:none}
+body.home #tglNav,body.home #tglSide,body.home #sysSeg,body.home #syslabel,body.home #shareBtn,body.home #crumb{display:none}
+.home{overflow:auto;min-height:0;background:var(--h-a);color:var(--label)}
+.home[hidden]{display:none}
+.h-in{max-width:1120px;margin:0 auto;padding:0 28px}
+.home h1{font-size:64px;line-height:1.02;font-weight:700;letter-spacing:-.032em;margin:0 0 32px;text-wrap:balance}
+.home h2{font-size:32px;line-height:1.15;font-weight:700;letter-spacing:-.022em;margin:0;text-wrap:balance}
+.h-hero{background:var(--view-bg)}
+.h-hero .h-in{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:24px;align-items:center;padding-top:48px;padding-bottom:48px;min-height:min(580px,calc(100vh - 53px))}
+.h-eyebrow{font-size:13px;font-weight:600;color:var(--tint);margin:0 0 10px}
+.h-pill{display:inline-flex;align-items:center;justify-content:center;min-height:42px;border-radius:999px;padding:0 20px;font-size:15px;font-weight:500;text-decoration:none;cursor:pointer;border:1px solid var(--tint);transition:transform .15s,background .15s,filter .15s}
+.h-pill.pri{background:var(--tint);color:#fff}
+.h-pill.pri:hover{filter:brightness(1.08)}
+.h-pill:active{transform:scale(.97)}
+/* tombol Mulai: satu-satunya aksi di pembuka, dibuat lebar supaya jelas sebagai titik masuk */
+.h-start{gap:8px;min-width:260px;min-height:52px;font-size:17px;font-weight:600}
+.h-start svg,.h-capt svg{flex:none;width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.h-start svg{width:14px;height:14px;stroke-width:2}
+.h-stage{position:relative;height:460px;isolation:isolate}
+.h-stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.h-stage::after{content:'';position:absolute;left:16%;right:16%;bottom:9%;height:36px;border-radius:50%;background:radial-gradient(closest-side,rgba(20,30,60,.22),transparent);z-index:-1}
+.h-capt{position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:center;align-items:center;gap:6px;flex-wrap:wrap;font-size:12.5px;color:var(--label2);text-align:center}
+.h-capt a{display:inline-flex;align-items:center;gap:3px;color:var(--tint);text-decoration:none;font-weight:500}
+.h-capt a:hover{text-decoration:underline}
+.h-feat{background:var(--h-dark);color:#f5f5f7;padding:72px 0}
+.h-feat h2{margin-bottom:36px}
+.h-fgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:28px}
+.h-fgrid svg{width:30px;height:30px;fill:none;stroke:#64b5ff;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.h-fgrid h3{font-size:16px;font-weight:600;margin:12px 0 6px;letter-spacing:-.01em}
+.h-fgrid p{font-size:14px;line-height:1.5;color:rgba(245,245,247,.68);margin:0}
+.h-comp{padding:72px 0 48px}
+.h-head{text-align:center;max-width:620px;margin:0 auto 36px}
+.h-head p{font-size:16px;line-height:1.5;color:var(--label2);margin:10px 0 0;text-wrap:pretty}
+.h-grp{display:grid;grid-template-columns:170px minmax(0,1fr);gap:16px;padding:20px 0;border-top:.5px solid var(--sep)}
+.h-grp h3{display:flex;align-items:center;align-self:start;gap:8px;font-size:15px;font-weight:600;margin:4px 0 0}
+.h-grp h3 .step{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--fill);color:var(--label2);font-size:12px;font-weight:600}
+.h-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+.h-tile{display:flex;flex-direction:column;background:var(--h-b);border-radius:18px;padding:12px 14px 14px;text-decoration:none;color:var(--label);transition:background .15s;min-width:0}
+.h-tile:hover{background:var(--h-bh)}
+.h-tile .ph{aspect-ratio:4/3;margin:0 0 8px;overflow:hidden;border-radius:10px}
+.h-tile img{display:block;width:100%;height:100%;object-fit:contain;opacity:0;transition:opacity .35s,transform .35s}
+.h-tile img.ok{opacity:1}
+.h-tile:hover img{transform:scale(1.04)}
+.h-tag{font-size:12px;font-weight:600;color:var(--tint)}
+.h-tag.pr{color:var(--lap)}
+.h-tile b{font-size:15.5px;font-weight:600;margin-top:1px;letter-spacing:-.01em}
+.h-tile small{font-size:12.5px;color:var(--label2);margin-top:2px}
+.h-ref{background:var(--h-b);padding:56px 0}
+.h-ref h3{font-size:22px;font-weight:700;letter-spacing:-.015em;margin:0 0 12px}
+.h-ref ul{margin:0;padding:0;list-style:none}
+.h-ref li{font-size:14px;line-height:1.45;color:var(--label2);padding:8px 0;border-top:.5px solid var(--sep)}
+.h-ref li b{color:var(--label);font-weight:600}
+.h-foot{padding-top:26px;padding-bottom:40px;font-size:12.5px;line-height:1.5;color:var(--label2)}
+@media (max-width: 980px){
+  .home{overflow:visible}
+  .h-hero .h-in{grid-template-columns:1fr;min-height:0;padding-top:36px;padding-bottom:28px;gap:8px}
+  .home h1{font-size:48px;margin-bottom:24px}
+  .home h2{font-size:27px}
+  .h-stage{height:340px}
+  .h-fgrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .h-grp{grid-template-columns:1fr;gap:10px}
+}
+@media (max-width: 560px){
+  .h-in{padding:0 16px}
+  .home h1{font-size:40px}
+  .h-start{width:100%;min-width:0}
+  .h-stage{height:280px}
+  .h-feat,.h-comp{padding:52px 0 40px}
+  .h-fgrid{grid-template-columns:1fr;gap:22px}
+  .h-tiles{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .h-tile{border-radius:14px;padding:10px 10px 12px}
+}
+
 @media (max-width: 980px){
   body{overflow:auto;display:block}
   header{flex-wrap:wrap;gap:8px 10px;padding:10px 12px;position:sticky;top:0}
@@ -432,17 +520,68 @@ aside{border-left:.5px solid var(--sep);display:flex;flex-direction:column;min-h
 </svg>
 <header>
   <button class="pt" id="tglNav" aria-controls="nav" aria-expanded="true" title="Sembunyikan daftar komponen ( [ )" aria-label="Sembunyikan daftar komponen"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="3.5" width="15" height="13" rx="2.5"/><rect class="bar" x="4" y="5" width="4" height="10" rx="1"/></svg></button>
-  <div class="brand"><b>Atlas Struktur</b><span id="crumb"></span></div>
+  <div class="brand"><a href="#beranda" title="Halaman utama"><b>Atlas Struktur</b></a><span id="crumb"></span></div>
   <div class="spacer"></div>
   <span class="syslabel" id="syslabel"></span>
   <div class="seg" id="sysSeg" role="group" aria-label="Sistem rangka">
-    <button data-sys="SRPMB">SRPMB</button>
-    <button data-sys="SRPMK" class="on">SRPMK</button>
+    <button data-sys="SRPMB" aria-pressed="false">SRPMB</button>
+    <button data-sys="SRPMK" class="on" aria-pressed="true">SRPMK</button>
   </div>
   <button class="pt" id="shareBtn" title="Salin tautan berbagi" aria-label="Salin tautan berbagi"><svg viewBox="0 0 20 20" aria-hidden="true" stroke-linecap="round"><path d="M10 12V3.2M6.8 6.2 10 3l3.2 3.2"/><path d="M7 8.5H5.5A1.5 1.5 0 0 0 4 10v5.5A1.5 1.5 0 0 0 5.5 17h9a1.5 1.5 0 0 0 1.5-1.5V10a1.5 1.5 0 0 0-1.5-1.5H13"/></svg></button>
   <button class="pt" id="themeBtn" data-mode="auto" title="Tema: otomatis" aria-label="Ganti tema, saat ini otomatis"><svg class="t-auto" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="6.5"/><path class="bar" d="M10 3.5a6.5 6.5 0 0 1 0 13z"/></svg><svg class="t-light" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.6"/><path d="M10 2v2.2M10 15.8V18M2 10h2.2M15.8 10H18M4.3 4.3l1.6 1.6M14.1 14.1l1.6 1.6M4.3 15.7l1.6-1.6M14.1 5.9l1.6-1.6" stroke-linecap="round"/></svg><svg class="t-dark" viewBox="0 0 20 20" aria-hidden="true"><path d="M15.5 12.6A6.5 6.5 0 0 1 7.4 4.5a6.5 6.5 0 1 0 8.1 8.1z"/></svg></button>
   <button class="pt" id="tglSide" aria-controls="side" aria-expanded="true" title="Sembunyikan panel konfigurasi ( ] )" aria-label="Sembunyikan panel konfigurasi"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="3.5" width="15" height="13" rx="2.5"/><rect class="bar" x="12" y="5" width="4" height="10" rx="1"/></svg></button>
 </header>
+<section class="home" id="home" hidden aria-labelledby="homeTitle">
+  <div class="h-hero">
+    <div class="h-in">
+      <div>
+        <p class="h-eyebrow">SNI 2847:2019 · SRPMB dan SRPMK</p>
+        <h1 id="homeTitle">Atlas Struktur</h1>
+        <a class="h-pill pri h-start" id="homeGo" href="#balok">Mulai<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6h7M6.3 2.8 9.5 6 6.3 9.2"/></svg></a>
+      </div>
+      <div class="h-stage" id="homeStage">
+        <canvas id="homeCv" role="img" aria-label="Model 3D gabungan yang berputar pelan: fondasi, sloof, kolom, balok, pelat, dinding, dan tangga"></canvas>
+        <p class="h-capt">Fondasi sampai pelat dalam satu model. <a href="#gabungan">Buka model ini<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M4.5 2.5 8 6l-3.5 3.5"/></svg></a></p>
+      </div>
+    </div>
+  </div>
+  <div class="h-feat">
+    <div class="h-in">
+      <h2>Satu model, banyak cara melihat</h2>
+      <div class="h-fgrid">
+        <div><svg viewBox="0 0 30 30" aria-hidden="true"><path d="M6 9l9-5 9 5v12l-9 5-9-5z"/><path d="M15 4v22" stroke-dasharray="2.5 2.5"/></svg>
+          <h3>Potong dan urai</h3><p>Geser bidang potong dari kiri dan kanan, atau pisahkan lapisan untuk melihat tulangan di dalam beton.</p></div>
+        <div><svg viewBox="0 0 30 30" aria-hidden="true"><path d="M5 24h20M8 24v-6h5v6M13 24V13h5v11M18 24V7h5v17"/></svg>
+          <h3>Urutan pelaksanaan</h3><p>Putar tahapan pengerjaan, dari galian fondasi sampai pengecoran pelat, satu tahap demi satu tahap.</p></div>
+        <div><svg viewBox="0 0 30 30" aria-hidden="true"><rect x="5" y="6" width="20" height="18" rx="2"/><path d="M9 19h12M9 19v-7h12v7M12 12v7M18 12v7"/></svg>
+          <h3>Gambar 2D otomatis</h3><p>Tampak dan potongan dibuat dari model yang sama, jadi selalu sesuai dengan parameter yang Anda ubah.</p></div>
+        <div><svg viewBox="0 0 30 30" aria-hidden="true"><circle cx="15" cy="15" r="10"/><path d="M10.5 15.5l3 3 6-7"/></svg>
+          <h3>Pemeriksaan syarat</h3><p>Setiap parameter dicek terhadap SNI 2847:2019 dan persyaratan bangunan sederhana, lengkap dengan nomor pasalnya.</p></div>
+      </div>
+    </div>
+  </div>
+  <div class="h-comp" id="homeTiles">
+    <div class="h-in">
+      <div class="h-head">
+        <h2>Pilih komponen</h2>
+        <p>Disusun seperti urutan membangun, dari fondasi sampai dinding. Di setiap kelompok, elemen praktis untuk bangunan sederhana didahulukan.</p>
+      </div>
+      <div id="homeGroups"></div>
+    </div>
+  </div>
+  <div class="h-ref">
+    <div class="h-in">
+      <h3>Dasar rujukan</h3>
+      <ul>
+        <li><b>SNI 2847:2019</b> Persyaratan beton struktural untuk bangunan gedung, untuk semua komponen beton bertulang.</li>
+        <li><b>SNI 1726:2019</b> untuk kategori desain seismik yang menentukan SRPMB atau SRPMK.</li>
+        <li><b>SNI 15-2094-2000</b> untuk ukuran bata merah pejal.</li>
+        <li><b>Persyaratan teknis bangunan gedung sederhana tahan gempa</b> dari Kementerian PU untuk elemen praktis. Beberapa batasnya belum dicocokkan dengan dokumen resmi.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="h-in h-foot">Atlas Struktur adalah alat bantu belajar. Hasilnya tidak menggantikan perhitungan dan gambar kerja dari perencana yang berwenang.</div>
+</section>
 <main>
   <nav id="nav"></nav>
   <section id="view">
@@ -479,16 +618,16 @@ aside{border-left:.5px solid var(--sep);display:flex;flex-direction:column;min-h
     </div>
   </section>
   <aside id="side">
-    <div class="tabs seg" id="tabs" role="tablist">
-      <button data-tab="param" class="on">Parameter</button>
-      <button data-tab="cek">Cek <span class="badge" id="badge">0</span></button>
-      <button data-tab="gambar">Gambar</button>
-      <button data-tab="teori">Penjelasan</button>
+    <div class="tabs seg" id="tabs" role="tablist" aria-label="Isi panel">
+      <button data-tab="param" class="on" role="tab" id="tab-param" aria-controls="pane-param" aria-selected="true">Parameter</button>
+      <button data-tab="cek" role="tab" id="tab-cek" aria-controls="pane-cek" aria-selected="false" tabindex="-1">Cek <span class="badge" id="badge">0</span></button>
+      <button data-tab="gambar" role="tab" id="tab-gambar" aria-controls="pane-gambar" aria-selected="false" tabindex="-1">Gambar</button>
+      <button data-tab="teori" role="tab" id="tab-teori" aria-controls="pane-teori" aria-selected="false" tabindex="-1">Penjelasan</button>
     </div>
-    <div class="pane on" id="pane-param"></div>
-    <div class="pane" id="pane-cek"></div>
-    <div class="pane" id="pane-gambar"></div>
-    <div class="pane prose" id="pane-teori"></div>
+    <div class="pane on" id="pane-param" role="tabpanel" aria-labelledby="tab-param"></div>
+    <div class="pane" id="pane-cek" role="tabpanel" aria-labelledby="tab-cek"></div>
+    <div class="pane" id="pane-gambar" role="tabpanel" aria-labelledby="tab-gambar"></div>
+    <div class="pane prose" id="pane-teori" role="tabpanel" aria-labelledby="tab-teori"></div>
   </aside>
 </main>
 <script type="module" src="js/app.js"></script>

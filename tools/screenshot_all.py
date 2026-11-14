@@ -13,6 +13,9 @@ async def main():
         pg.on('console', lambda m: errs.append(f'{m.type}: {m.text}') if m.type=='error' else None)
         await pg.goto('http://localhost:8765/index.html'); await pg.wait_for_timeout(1500)
         await pg.evaluate("localStorage.clear()")
+        # halaman utama (tanpa hash): pembuka dan gambar mini komponen
+        await pg.reload(); await pg.wait_for_timeout(3000)
+        await pg.screenshot(path='tools/shots/beranda.png')
         for c in comps:
             for sysn in ['SRPMK','SRPMB']:
                 await pg.goto(f'http://localhost:8765/index.html#{c}'); await pg.evaluate("localStorage.clear()")

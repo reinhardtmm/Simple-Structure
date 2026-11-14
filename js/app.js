@@ -16,6 +16,7 @@ import sloofpraktis from './comp/sloofpraktis.js';
 import kolompraktis from './comp/kolompraktis.js';
 import bata from './comp/bata.js';
 import gabungan from './comp/gabungan.js';
+import { initHome } from './home.js';
 
 // Dikelompokkan menurut jenis elemen; di setiap kelompok elemen praktis didahulukan, lalu elemen struktur.
 // Mode gabungan tidak masuk kelompok mana pun: tombolnya ada di bawah daftar, dan saat aktif panel kiri berubah menjadi toggle.
@@ -28,6 +29,7 @@ const GROUPS=[
 ];
 const COMPS=Object.fromEntries([...GROUPS.flatMap(g=>g[1]),gabungan].map(c=>[c.id,c]));
 let lastComp='balok';  // komponen yang dibuka sebelum masuk mode gabungan, untuk tombol kembali
+let homeOn=false;  // halaman utama sedang tampil
 const S=0.001;
 const SYS_TEXT={
   SRPMB:'Sistem Rangka Pemikul Momen Biasa. Untuk KDS B, detailing mengikuti pasal umum.',
@@ -131,6 +133,27 @@ function concreteMesh(c){
       const g=new THREE.ExtrudeGeometry(sh,{depth:(P.x1-P.x0)*S,bevelEnabled:false}).rotateY(PI/2); const m=new THREE.Mesh(g,mat); m.position.x=P.x0*S; return withEdges(m,20); }
     const sh=new THREE.Shape(P.pts.map(([a,b])=>new THREE.Vector2(a*S,b*S)));
     const g=new THREE.ExtrudeGeometry(sh,{depth:(P.z1-P.z0)*S,bevelEnabled:false}); const m=new THREE.Mesh(g,mat); m.position.z=P.z0*S; return withEdges(m,20); }
+}
+
+// Model diam untuk halaman utama (pembuka dan gambar mini): nilai awal SRPMK, lapisan bawaan saja (tanpa yang off),
+// material salinan dengan transparansi tetap dan tanpa bidang potong, dan tulangan tanpa cache geometri supaya
+// geometrinya boleh dibuang oleh home.js tanpa mengganggu model utama.
+const homeMat=new Map(), masonSet=()=>new Set(masonMat.values());
+function homeMatOf(m){
+  if(homeMat.has(m)) return homeMat.get(m);
+  const c=m.clone(); c.clippingPlanes=null;
+  if(m===M.concrete){ c.opacity=0.2; c.depthWrite=false; } else if(m===M.stub){ c.opacity=0.14; c.depthWrite=false; }
+  else if(m===M.edge) c.opacity=0.55; else if(masonSet().has(m)){ c.opacity=0.42; c.depthWrite=false; }
+  homeMat.set(m,c); return c;
+}
+function staticModel(id){
+  const c=COMPS[id], m=c.build(clone(c.defaults[c.sysDependent?'SRPMK':'ALL']),'SRPMK');
+  const off=new Set((m.layers||[]).filter(L=>L.off).map(L=>L.k)), g=new THREE.Group();
+  for(const cc of m.concrete){ if(cc.layer&&off.has(cc.layer)) continue; const mesh=concreteMesh(cc); mesh.traverse(o=>{ if(o.material) o.material=homeMatOf(o.material); }); g.add(mesh); }
+  for(const b of m.bars){ if(off.has(b.layer)) continue;
+    const pts=[]; for(const p of b.pts){ const v=new THREE.Vector3(p[0]*S,p[1]*S,p[2]*S); if(!pts.length||v.distanceToSquared(pts.at(-1))>1e-12) pts.push(v); }
+    if(pts.length<2) continue; g.add(new THREE.Mesh(tubeGeo(pts,b.d/2*S,6),homeMatOf(matOf(b.color)))); }
+  return {group:g,camDir:m.camDir,camK:m.camK};
 }
 
 const root=new THREE.Group(); scene.add(root);
@@ -250,6 +273,7 @@ let rzT=0; new ResizeObserver(()=>{ clearTimeout(rzT); if(document.body.classLis
 // Objek bertahap disembunyikan sampai tahapnya tiba. Tulangan turun ke posisinya; beton dan bata "dicor" naik dari bawah
 // memakai bidang potong horizontal tambahan (pourPlane) pada salinan material.
 const seq={on:false,step:0,playing:false,tw:null,doneAt:0,dur:3000,lastTw:1000};
+const reduceMotion=matchMedia('(prefers-reduced-motion: reduce)');
 try{ const d=Number(localStorage.getItem('atlas-tulangan-seqdur')); if(d>=1500&&d<=8000) seq.dur=d; }catch(e){}
 const pourPlane=new THREE.Plane(new THREE.Vector3(0,-1,0),0), pourCache=new Map();
 const pourMatOf=m=>{ if(!pourCache.has(m)){ const c=m.clone(); c.clippingPlanes=[clip,clip2,pourPlane]; pourCache.set(m,c); } const c=pourCache.get(m); c.opacity=m.opacity; c.depthWrite=m.depthWrite; return c; };
@@ -273,7 +297,8 @@ function tweenStep(now){
 function seqApply(animate){
   finishTween(); invalidate();
   for(const o of staged) o.visible=!seq.on||o.userData.stage<=seq.step;
-  if(seq.on&&animate) startTween();
+  // Dengan 'kurangi gerakan', tahap langsung tampil di posisi akhir tanpa tulangan turun atau beton naik
+  if(seq.on&&animate&&!reduceMotion.matches) startTween(); else { seq.lastTw=0; seq.doneAt=performance.now(); }
   renderSeqUI();
 }
 function seqGo(step,animate=true){ const n=model?.stages?.length||0; if(!n) return; seq.step=Math.max(0,Math.min(n-1,step)); seqApply(animate); }
@@ -325,7 +350,7 @@ function setFly(on){
 flyBtn.onclick=()=>setFly(!fly.on);
 const MOVE={KeyW:1,KeyA:1,KeyS:1,KeyD:1,KeyQ:1,KeyE:1,Space:1,ArrowUp:1,ArrowDown:1,ArrowLeft:1,ArrowRight:1,ShiftLeft:1,ShiftRight:1};
 window.addEventListener('keydown',e=>{
-  if(e.ctrlKey||e.metaKey||e.altKey||isTyping(e.target)) return;
+  if(e.ctrlKey||e.metaKey||e.altKey||homeOn||isTyping(e.target)) return;
   if(e.code==='KeyF'){ setFly(!fly.on); return; }
   if(!fly.on){ if(seq.on&&(e.code==='ArrowRight'||e.code==='ArrowLeft')){ seq.playing=false; seqGo(seq.step+(e.code==='ArrowRight'?1:-1),e.code==='ArrowRight'); e.preventDefault(); } return; }
   if(e.code==='Escape'){ setFly(false); return; }
@@ -348,7 +373,7 @@ function flyStep(dt){
   camera.position.addScaledVector(_f,fw*sp).addScaledVector(_r,rt*sp).addScaledVector(UP,upd*sp);
 }
 let lastErr='';
-renderer.setAnimationLoop(()=>{ try{ const dt=Math.min(clock.getDelta(),0.1), now=performance.now(); tweenStep(now); seqTick(now);
+renderer.setAnimationLoop(()=>{ try{ const dt=Math.min(clock.getDelta(),0.1), now=performance.now(); if(homeOn) return; tweenStep(now); seqTick(now);
     if(fly.on){ flyStep(dt); dirty=2; } else controls.update();
     if(seq.tw||dirty>0){ renderer.render(scene,camera); drawLabels(); if(dirty>0) dirty--; } }
   catch(err){ if(String(err)!==lastErr){ lastErr=String(err); console.error('Gagal merender frame:',err); } } });
@@ -450,7 +475,7 @@ function renderChecks(m){
   const cs=m.checks, n=cs.filter(c=>c.ok!==null).length, ok=cs.filter(c=>c.ok===true).length, bad=n-ok;
   const b=document.getElementById('badge'); b.textContent=bad?`${bad} gagal`:'lolos'; b.className='badge '+(bad?'bad':'good');
   let h=`<div class="sum ${bad?'bad':'good'}">${bad?`${bad} dari ${n} pemeriksaan tidak terpenuhi`:`${ok} dari ${n} pemeriksaan terpenuhi`}</div>`;
-  h+='<div class="list">'+cs.map(c=>`<div class="chk ${c.ok===null?'info':c.ok?'ok':'bad'}"><div class="ic" aria-label="${c.ok===null?'info':c.ok?'terpenuhi':'tidak terpenuhi'}">${c.ok===null?'i':c.ok?'✓':'✕'}</div><div><div class="t">${c.t}</div><div class="d">${c.d}</div><div class="p">${pasalTxt(c.p)}</div></div></div>`).join('')+'</div>';
+  h+='<div class="list">'+cs.map(c=>`<div class="chk ${c.ok===null?'info':c.ok?'ok':'bad'}"><div class="ic" role="img" aria-label="${c.ok===null?'info':c.ok?'terpenuhi':'tidak terpenuhi'}">${c.ok===null?'i':c.ok?'✓':'✕'}</div><div><div class="t">${c.t}</div><div class="d">${c.d}</div><div class="p">${pasalTxt(c.p)}</div></div></div>`).join('')+'</div>';
   const c0=COMPS[state.comp];
   h+=`<p class="disclaimer">Pemeriksaan ini hanya mencakup detailing dan syarat geometri. Kapasitas lentur, geser, aksial, serta daya dukung tanah tidak dihitung karena memerlukan data beban dan tanah. ${c0.checkNote||'Nomor pasal mengacu pada SNI 2847:2019, adopsi modifikasi dari ACI 318M-14, dan sudah dicocokkan dengan teks SNI. Asumsi: agregat maksimum 20 mm, beton normal, tulangan tanpa lapisan epoksi.'} Pemeriksaan ini tetap alat bantu belajar, bukan pengganti desain oleh perencana.</p>`;
   document.getElementById('pane-cek').innerHTML=h;
@@ -494,7 +519,7 @@ function update(refit){
   document.body.classList.remove('sys-SRPMB','sys-SRPMK','sys-NA'); document.body.classList.add('sys-'+(c.sysDependent?state.sys:'NA'));
   document.getElementById('crumb').textContent=`${c.name} · ${c.sysDependent?(c.sysName?.[state.sys]||state.sys):'umum'} · ${c.std||'SNI 2847:2019'}`;
   document.getElementById('syslabel').textContent=c.sysDependent?(c.sysText?.[state.sys]||SYS_TEXT[state.sys]):'Komponen ini tidak bergantung pada sistem rangka. Detailingnya sama untuk SRPMB dan SRPMK.';
-  document.querySelectorAll('#sysSeg button').forEach(x=>{ x.disabled=!c.sysDependent; x.classList.toggle('on',c.sysDependent&&x.dataset.sys===state.sys); });
+  document.querySelectorAll('#sysSeg button').forEach(x=>{ x.disabled=!c.sysDependent; const on=c.sysDependent&&x.dataset.sys===state.sys; x.classList.toggle('on',on); x.setAttribute('aria-pressed',String(on)); });
   document.title=`Atlas Struktur: ${c.name}`;
   save();
 }
@@ -549,7 +574,18 @@ document.getElementById('nav').addEventListener('keydown',e=>{ if(e.target.id!==
   if(e.key==='Escape'){ navQ=''; e.target.value=''; applyNavFilter(); }
   else if(e.key==='Enter'){ const first=[...document.querySelectorAll('#nav [data-q]')].find(el=>!el.hidden); if(!first) return;
     if(first.dataset.comp){ navQ=''; goComp(first.dataset.comp); } else first.querySelector('input:not(:disabled)')?.click(); } });
-document.getElementById('tabs').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; document.querySelectorAll('#tabs button').forEach(x=>x.classList.toggle('on',x===b)); document.querySelectorAll('.pane').forEach(p=>p.classList.toggle('on',p.id==='pane-'+b.dataset.tab)); if(b.dataset.tab==='gambar'&&drawDirty) renderDrawings(model); });
+// Tab panel kanan mengikuti pola ARIA tabs: hanya tab aktif yang masuk urutan Tab, panah kiri/kanan, Home, dan End berpindah tab.
+const tabBtns=[...document.querySelectorAll('#tabs [role=tab]')];
+function selectTab(b,focus){
+  tabBtns.forEach(x=>{ const on=x===b; x.classList.toggle('on',on); x.setAttribute('aria-selected',String(on)); x.tabIndex=on?0:-1; });
+  document.querySelectorAll('.pane').forEach(p=>p.classList.toggle('on',p.id==='pane-'+b.dataset.tab));
+  if(focus) b.focus();
+  if(b.dataset.tab==='gambar'&&drawDirty) renderDrawings(model);
+}
+document.getElementById('tabs').addEventListener('click',e=>{ const b=e.target.closest('[role=tab]'); if(b) selectTab(b,false); });
+document.getElementById('tabs').addEventListener('keydown',e=>{ const i=tabBtns.indexOf(e.target); if(i<0) return; const n=tabBtns.length;
+  const j=e.key==='ArrowRight'?(i+1)%n:e.key==='ArrowLeft'?(i-1+n)%n:e.key==='Home'?0:e.key==='End'?n-1:-1;
+  if(j<0) return; e.preventDefault(); selectTab(tabBtns[j],true); });
 const bindRange=(id,k)=>{ const el=document.getElementById(id); el.addEventListener('input',e=>{ V()[k]=Number(e.target.value); applyView(); }); el.addEventListener('change',save); };
 // Slider Potong punya dua ujung (dua input range yang ditumpuk). Keduanya boleh bertemu, tetapi tidak saling melewati.
 // Mouse dan sentuhan ditangani di wadahnya: ujung terdekat yang digeser, dan bila kedua ujung bertumpuk, arah seret
@@ -638,14 +674,40 @@ const togglePanel=k=>setPanel(k,document.body.classList.contains(PANELS[k].cls))
 document.getElementById('tglNav').onclick=()=>togglePanel('nav');
 document.getElementById('tglSide').onclick=()=>togglePanel('side');
 window.addEventListener('keydown',e=>{
-  if(e.ctrlKey||e.metaKey||e.altKey||isTyping(e.target)) return;
+  if(e.ctrlKey||e.metaKey||e.altKey||homeOn||isTyping(e.target)) return;
   if(e.key==='[') togglePanel('nav'); else if(e.key===']') togglePanel('side');
 });
 try{ const ly=JSON.parse(localStorage.getItem('atlas-tulangan-layout')||'null'); if(ly){ setPanel('nav',ly.nav!==false,false); setPanel('side',ly.side!==false,false); } }catch(e){}
 
+/* ===== halaman utama =====
+   Tampil bila alamat tanpa hash atau #beranda. Tautan komponen (#balok) dan tautan berbagi (?k=) langsung membuka
+   aplikasi. Kartu di halaman utama adalah tautan biasa, jadi tombol Kembali di browser kembali ke halaman utama.
+   Model utama tetap dibangun di latar supaya membuka komponen terakhir terasa instan. */
+const homeEl=document.getElementById('home');
+const home=initHome({groups:GROUPS,staticModel});
+const isHomeHash=h=>h===''||h==='beranda';
+function showHome(on){
+  if(on===homeOn&&on===!homeEl.hidden) return;
+  homeOn=on; homeEl.hidden=!on; document.body.classList.toggle('home',on);
+  if(on){
+    setFly(false); if(seq.on) seqClose(); select(null); presetMenu(false,false);
+    home.show(state.comp);  // Mulai membuka aplikasi di komponen terakhir, lengkap dengan daftar komponen dan Gabungan
+    document.title='Atlas Struktur'; homeEl.scrollTop=0;
+  } else {
+    home.hide(); document.title=`Atlas Struktur: ${COMPS[state.comp].name}`;
+    // Masuk dari halaman utama selalu menampilkan daftar komponen (termasuk Gabungan) dan panel konfigurasi,
+    // walaupun sebelumnya pengguna menyembunyikannya.
+    for(const k of ['nav','side']) if(document.body.classList.contains(PANELS[k].cls)) setPanel(k,true);
+    window.scrollTo(0,0); resize(); invalidate();
+  }
+}
+
 renderNav(); resize(); update(true);
+showHome(!sharedOpen&&isHomeHash(hash));
 if(sharedOpen) setTimeout(()=>toast('Membuka model dari tautan berbagi.'),300);
-window.addEventListener('hashchange',()=>{ const h=(location.hash||'').slice(1); if(COMPS[h]&&h!==state.comp){ state.comp=h; renderNav(); update(true); } });
-window.__atlas={state,update,camera,get timing(){return timing;},get labels(){return labels.map(L=>({t:L.t,group:L.follow||L._g||'beton'}));},get pickables(){return pickables;},COMPS,
+window.addEventListener('hashchange',()=>{ const h=(location.hash||'').slice(1);
+  if(COMPS[h]){ if(h!==state.comp){ if(h==='gabungan'&&state.comp!=='gabungan') lastComp=state.comp; state.comp=h; renderNav(); update(true); } showHome(false); }
+  else if(isHomeHash(h)) showHome(true); });
+window.__atlas={state,update,camera,showHome,get homeOn(){return homeOn;},home,get timing(){return timing;},get labels(){return labels.map(L=>({t:L.t,group:L.follow||L._g||'beton'}));},get pickables(){return pickables;},COMPS,
   // kait pengujian: memajukan animasi urutan tanpa menunggu frame (berguna saat tab di latar)
   seq:{state:seq,tick:t=>{ tweenStep(t); seqTick(t); },open:seqOpen,close:seqClose,go:seqGo,get staged(){return staged;}}};
