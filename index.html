@@ -411,7 +411,8 @@ body.home #tglNav,body.home #tglSide,body.home #sysSeg,body.home #syslabel,body.
 .h-start svg,.h-capt svg{flex:none;width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .h-start svg{width:14px;height:14px;stroke-width:2}
 .h-stage{position:relative;height:460px;isolation:isolate}
-.h-stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.h-stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block;transition:opacity .38s ease}
+.h-stage canvas.fade{opacity:0}
 .h-stage::after{content:'';position:absolute;left:16%;right:16%;bottom:9%;height:36px;border-radius:50%;background:radial-gradient(closest-side,rgba(20,30,60,.22),transparent);z-index:-1}
 .h-capt{position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:center;align-items:center;gap:6px;flex-wrap:wrap;font-size:12.5px;color:var(--label2);text-align:center}
 .h-capt a{display:inline-flex;align-items:center;gap:3px;color:var(--tint);text-decoration:none;font-weight:500}
@@ -541,7 +542,7 @@ body.home #tglNav,body.home #tglSide,body.home #sysSeg,body.home #syslabel,body.
       </div>
       <div class="h-stage" id="homeStage">
         <canvas id="homeCv" role="img" aria-label="Model 3D gabungan yang berputar pelan: fondasi, sloof, kolom, balok, pelat, dinding, dan tangga"></canvas>
-        <p class="h-capt">Fondasi sampai pelat dalam satu model. <a href="#gabungan">Buka model ini<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M4.5 2.5 8 6l-3.5 3.5"/></svg></a></p>
+        <p class="h-capt"><span id="homeCapT">Mode gabungan: fondasi sampai pelat dalam satu model.</span> <a id="homeCapA" href="#gabungan">Buka model ini<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M4.5 2.5 8 6l-3.5 3.5"/></svg></a></p>
       </div>
     </div>
   </div>
