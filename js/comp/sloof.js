@@ -1,14 +1,14 @@
-import {AREA,COL,fmt,linspace,turtle,hoop2D,lift3D,spread,ldhGen,checker,DAGG} from '../core.js';
+import {AREA,COL,fmt,linspace,turtle,hoop2D,lift3D,spread,ldhGen,checker,DAGG,KAIT_FIELD,hookOf,hookExt,kaitInfo} from '../core.js';
 
 export default {
   id:'sloof', name:'Sloof struktur (tie beam)', sysDependent:true,
   defaults:{
-    SRPMB:{b:250,h:400,L:4000,cap:1200,capH:600,n:3,db:16,ds:10,s:150,fc:25,fy:420,cover:40},
+    SRPMB:{b:250,h:400,L:4000,cap:1200,capH:600,n:3,db:16,ds:10,s:150,fc:25,fy:420,cover:40,kait:90},
     SRPMK:{b:300,h:400,L:4000,cap:1200,capH:700,n:3,db:16,ds:10,s:150,fc:30,fy:420,cover:40}
   },
   schema:[
     ['Geometri',[{k:'b',label:'Lebar b',unit:'mm',min:150,max:600,step:25},{k:'h',label:'Tinggi h',unit:'mm',min:200,max:900,step:25},{k:'L',label:'Jarak bersih antar fondasi',unit:'mm',min:2000,max:10000,step:100},{k:'cap',label:'Ukuran fondasi atau pile cap',unit:'mm',min:600,max:2500,step:50},{k:'capH',label:'Tebal fondasi atau pile cap',unit:'mm',min:300,max:1500,step:50}]],
-    ['Tulangan',[{k:'n',label:'Tulangan atas dan bawah (simetris)',unit:'batang',min:2,max:6},{k:'db',label:'Diameter longitudinal',unit:'D',opts:[13,16,19,22,25]},{k:'ds',label:'Diameter sengkang',unit:'D',opts:[8,10,13]},{k:'s',label:'Spasi sengkang',unit:'mm',min:50,max:400,step:5}]],
+    ['Tulangan',[{k:'n',label:'Tulangan atas dan bawah (simetris)',unit:'batang',min:2,max:6},{k:'db',label:'Diameter longitudinal',unit:'D',opts:[13,16,19,22,25]},{k:'ds',label:'Diameter sengkang',unit:'D',opts:[8,10,13]},KAIT_FIELD,{k:'s',label:'Spasi sengkang',unit:'mm',min:50,max:400,step:5}]],
     ['Material',[{k:'fc',label:"Mutu beton fc'",unit:'MPa',opts:[20,25,30,35]},{k:'fy',label:'Mutu baja fy',unit:'MPa',opts:[280,420]},{k:'cover',label:'Selimut beton',unit:'mm',min:25,max:75,step:5}]]
   ],
   teori:{
@@ -19,7 +19,7 @@ export default {
   build(p,sys){
     const K=sys==='SRPMK';
     const {b,h,L,cap,capH,n,db,ds,s,fc,fy,cover}=p;
-    const hook=K?135:90, ext=K?Math.max(6*ds,75):6*ds, r=2.5*ds;
+    const hook=hookOf(p,K), ext=hookExt(hook,ds), r=2.5*ds;
     const yc=-h/2, zl=b/2-cover-ds-db/2, yl=h/2-cover-ds-db/2;
     const zs=linspace(-zl,zl,n);
     const rb=3.5*db, tail=12*db, xA=-cap+75+db/2, xB=L+cap-75-db/2;
@@ -31,7 +31,7 @@ export default {
     zs.forEach(z=>{ bars.push({pts:top.map(([x,y])=>[x,y,z]),d:db,layer:'atas',color:COL.top,info:iT}); bars.push({pts:bot.map(([x,y])=>[x,y,z]),d:db,layer:'bawah',color:COL.bot,info:iT}); });
     const hp=hoop2D(b/2-cover-ds/2,h/2-cover-ds/2,r,hook,ext);
     const xs=spread(50,L-50,s);
-    const iS={t:`Sengkang tertutup D${ds}-${s}`,b:[K?`Kait 135° dengan perpanjangan ${fmt(ext)} mm.`:`Kait 90° dengan perpanjangan ${fmt(ext)} mm.`],pasal:K?'Pasal 18.13.3.2':'Pasal 9.7.6'};
+    const iS={t:`Sengkang tertutup D${ds}-${s}`,b:[hook===135?`Kait 135° dengan perpanjangan ${fmt(ext)} mm.`:`Kait 90° dengan perpanjangan ${fmt(ext)} mm.`],pasal:K?'Pasal 18.13.3.2':'Pasal 9.7.6'};
     xs.forEach(x=>bars.push({pts:lift3D(hp,(u,v,w)=>[x+w,yc+v,u],ds*1.05),d:ds,layer:'sengkang',color:COL.mid,info:iS}));
     const concrete=[{box:[0,L,-h,0,-b/2,b/2]},{box:[-cap,0,-capH,0,-cap/2,cap/2],kind:'stub'},{box:[L,L+cap,-capH,0,-cap/2,cap/2],kind:'stub'},{box:[-cap/2-200,-cap/2+200,0,700,-200,200],kind:'stub'},{box:[L+cap/2-200,L+cap/2+200,0,700,-200,200],kind:'stub'}];
     const labels=[{p:[-cap/2,-capH-80,cap/2],t:'fondasi atau pile cap'},{p:[L/2,80,0],t:`L = ${fmt(L)} mm`},{p:[L/2,-h-60,b/2],t:`D${ds}-${s}`,c:'mid'}];
@@ -51,6 +51,7 @@ export default {
       add(null,'Gaya aksial rencana','ditentukan dari SNI 1726:2019, tidak dihitung di sini','SNI 1726:2019');
     } else {
       add(s<=Math.min(d/2,600),'Spasi sengkang',`${s} mm ≤ d/2 = ${fmt(d/2)} mm`,'Pasal 9.7.6.2.2');
+      kaitInfo(add,hook,ds);
       add(null,'Pasal pengikat seismik','18.13 hanya berlaku untuk KDS D, E, dan F','Pasal 18.13.1.1');
     }
     const views=[

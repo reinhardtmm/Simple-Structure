@@ -1,15 +1,15 @@
-import {AREA,DIAS,COL,fmt,dn5,linspace,turtle,rectCage,lift3D,ashReq,ldhGen,ldhSeis,spread,checker} from '../core.js';
+import {AREA,DIAS,COL,fmt,dn5,linspace,turtle,rectCage,lift3D,ashReq,ldhGen,ldhSeis,spread,checker,KAIT_FIELD,hookOf,kaitInfo} from '../core.js';
 
 export default {
   id:'hbk', name:'Hubungan balok-kolom', sysDependent:true,
   defaults:{
-    SRPMB:{tipe:'interior',bc:450,b:300,h:500,nb:3,dbB:16,nc:3,dbC:16,ds:10,sj:150,fc:30,fy:420,cover:40},
+    SRPMB:{tipe:'interior',bc:450,b:300,h:500,nb:3,dbB:16,nc:3,dbC:16,ds:10,sj:150,fc:30,fy:420,cover:40,kait:90},
     SRPMK:{tipe:'interior',bc:500,b:400,h:550,nb:3,dbB:19,nc:4,dbC:19,ds:13,sj:100,fc:30,fy:420,cover:40}
   },
   schema:[
     ['Konfigurasi',[{k:'tipe',label:'Tipe joint',opts:[['interior','Interior, balok di 4 sisi'],['tepi','Tepi, balok di 3 sisi']]}]],
     ['Dimensi',[{k:'bc',label:'Sisi kolom (bujur sangkar)',unit:'mm',min:300,max:900,step:25},{k:'b',label:'Lebar balok',unit:'mm',min:200,max:700,step:25},{k:'h',label:'Tinggi balok',unit:'mm',min:300,max:900,step:25}]],
-    ['Tulangan',[{k:'nb',label:'Tulangan balok atas dan bawah',unit:'batang',min:2,max:6},{k:'dbB',label:'Diameter tulangan balok',unit:'D',opts:DIAS},{k:'nc',label:'Tulangan kolom per sisi',unit:'batang',min:2,max:7},{k:'dbC',label:'Diameter tulangan kolom',unit:'D',opts:DIAS},{k:'ds',label:'Diameter sengkang',unit:'D',opts:[10,13,16]},{k:'sj',label:'Spasi sengkang di joint',unit:'mm',min:50,max:300,step:5}]],
+    ['Tulangan',[{k:'nb',label:'Tulangan balok atas dan bawah',unit:'batang',min:2,max:6},{k:'dbB',label:'Diameter tulangan balok',unit:'D',opts:DIAS},{k:'nc',label:'Tulangan kolom per sisi',unit:'batang',min:2,max:7},{k:'dbC',label:'Diameter tulangan kolom',unit:'D',opts:DIAS},{k:'ds',label:'Diameter sengkang',unit:'D',opts:[10,13,16]},KAIT_FIELD,{k:'sj',label:'Spasi sengkang di joint',unit:'mm',min:50,max:300,step:5}]],
     ['Material',[{k:'fc',label:"Mutu beton fc'",unit:'MPa',opts:[20,25,30,35,40]},{k:'fy',label:'Mutu baja fy',unit:'MPa',opts:[280,420]},{k:'cover',label:'Selimut beton',unit:'mm',min:25,max:75,step:5}]]
   ],
   teori:{
@@ -20,8 +20,8 @@ export default {
   build(p,sys){
     const K=sys==='SRPMK', inter=p.tipe==='interior';
     const {bc,b,h,nb,dbB,nc,dbC,ds,sj,fc,fy,cover}=p;
-    const Lb=1100, Lc=800;
-    const cg=rectCage({B:bc,H:bc,cover,ds,db:dbC,nu:nc,nv:nc,hook:K?135:90,allSup:K});
+    const Lb=1100, Lc=800, hook=hookOf(p,K);
+    const cg=rectCage({B:bc,H:bc,cover,ds,db:dbC,nu:nc,nv:nc,hook,allSup:K});
     const bars=[];
     const iC={t:`Tulangan kolom ${cg.pos.length}D${dbC}`,b:['Menerus melewati joint.'],pasal:K?'Pasal 18.7.4':'Pasal 10.7'};
     cg.pos.forEach(([x,z])=>bars.push({pts:[[x,-h/2-Lc,z],[x,h/2+Lc,z]],d:dbC,layer:'kolom',color:COL.long,info:iC}));
@@ -55,7 +55,7 @@ export default {
     // sengkang balok
     const d=h-cover-ds-dbB/2, sB=K?dn5(Math.min(d/4,6*dbB,150)):dn5(Math.min(d/2,300));
     const iS={t:`Sengkang balok D${ds}-${sB}`,b:[K?'Daerah 2h balok SRPMK, sengkang pertama 50 mm dari muka kolom.':'Sengkang balok.'],pasal:K?'Pasal 18.6.4':'Pasal 9.7.6'};
-    const hp=rectCage({B:b,H:h,cover,ds,db:dbB,nu:2,nv:2,hook:K?135:90,allSup:true}).hoop;
+    const hp=rectCage({B:b,H:h,cover,ds,db:dbB,nu:2,nv:2,hook,allSup:true}).hoop;
     const xs=[]; for(let x=bc/2+50;x<bc/2+Lb-20;x+=sB) xs.push(x);
     xs.forEach(x=>{
       bars.push({pts:lift3D(hp,(u,v,w)=>[x+w,v,u],ds*1.05),d:ds,layer:'sengkangB',color:COL.mid,info:iS});
@@ -89,6 +89,7 @@ export default {
       add(sj<=sMx+0.5,'Spasi sengkang joint',`s = ${sj} mm ≤ h/2 balok terendah = ${fmt(sMx)} mm`,'Pasal 15.4.2.2');
       add(Av>=AvReq,'Luas kaki sengkang joint',`${nLeg} kaki = ${fmt(Av)} mm² ≥ maks(0,062√fc'; 0,35)·b·s/fyt = ${fmt(AvReq)} mm²`,'Pasal 15.4.2');
       add(true,'Sebaran sengkang joint',`${jy.length} lapis disebar sepanjang tinggi balok ${fmt(h)} mm`,'Pasal 15.4.2.1');
+      kaitInfo(add,hook,ds);
     }
     const views=[
       {title:'Potongan vertikal melalui joint (bidang x-y)',n:'z',at:0,half:Math.max(zl,cg.av)+dbC,u:'x',v:'y',layers:['kolom','balokX','sengkangJ','sengkangK','sengkangB'],maxH:420,dims:[{a:[-bc/2,-h/2-Lc],b:[bc/2,-h/2-Lc],off:-12,t:`hc = ${bc}`},{a:[bc/2+Lb,-h/2],b:[bc/2+Lb,h/2],off:14,t:`h = ${h}`}]},

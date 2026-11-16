@@ -86,6 +86,16 @@ export function rectCage({B,H,cover,ds,db,nu,nv,hook,allSup}){
 // Ash menurut 18.7.5.4 (persegi)
 export function ashReq(s,bc,fc,fyt,Ag,Ach){ return Math.max(0.3*s*bc*fc/fyt*(Ag/Ach-1),0.09*s*bc*fc/fyt); }
 
+// Pilihan kait sengkang. SRPMK selalu memakai kait gempa 135° (25.3.4); SRPMB boleh 90° (Tabel 25.3.2, D ≤ 16) atau 135°.
+export const KAIT_FIELD={k:'kait',label:'Kait sengkang',opts:[[90,'90°'],[135,'135° (kait gempa)']],show:s=>s!=='SRPMK'};
+export const hookOf=(p,K)=>K||Number(p.kait)===135?135:90;
+export const hookExt=(hook,ds)=>hook===135?Math.max(6*ds,75):6*ds;
+// pemeriksaan info untuk kait sengkang SRPMB
+export function kaitInfo(add,hook,ds,p='Pasal 25.3.2'){
+  if(hook===135) add(null,'Kait sengkang 135°',`perpanjangan maks(6db; 75) = ${fmt(hookExt(135,ds))} mm. Tidak wajib di SRPMB, tetapi kait tetap tertanam di inti beton bila selimut terkelupas`,p);
+  else add(null,'Kait sengkang 90°',`perpanjangan 6db = ${fmt(hookExt(90,ds))} mm, diizinkan untuk D ≤ 16. Kait 135° tetap lebih baik`,p);
+}
+
 // pembuat daftar pemeriksaan
 export function checker(){ const C=[]; const add=(ok,t,d,p,opt={})=>C.push({ok,t,d,p,...opt}); return {C,add}; }
 

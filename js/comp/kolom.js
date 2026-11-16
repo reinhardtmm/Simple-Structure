@@ -1,14 +1,14 @@
-import {AREA,DIAS,COL,fmt,up50,devLen,fill,checker,rectCage,lift3D,ashReq,DAGG} from '../core.js';
+import {AREA,DIAS,COL,fmt,up50,devLen,fill,checker,rectCage,lift3D,ashReq,DAGG,KAIT_FIELD,hookOf,kaitInfo} from '../core.js';
 
 export default {
   id:'kolom', name:'Kolom struktur', sysDependent:true,
   defaults:{
-    SRPMB:{bx:400,by:400,H:3500,hb:500,nx:3,ny:3,db:16,ds:10,sLo:150,sMid:200,fc:30,fy:420,cover:40,lap:true},
+    SRPMB:{bx:400,by:400,H:3500,hb:500,nx:3,ny:3,db:16,ds:10,sLo:150,sMid:200,fc:30,fy:420,cover:40,lap:true,kait:90},
     SRPMK:{bx:500,by:500,H:3500,hb:500,nx:4,ny:4,db:19,ds:13,sLo:100,sMid:110,fc:30,fy:420,cover:40,lap:true}
   },
   schema:[
     ['Penampang',[{k:'bx',label:'Lebar bx',unit:'mm',min:200,max:1000,step:25},{k:'by',label:'Lebar bz',unit:'mm',min:200,max:1000,step:25},{k:'H',label:'Tinggi bersih ℓu',unit:'mm',min:2000,max:6000,step:100},{k:'hb',label:'Tinggi balok di HBK',unit:'mm',min:300,max:1000,step:25}]],
-    ['Tulangan',[{k:'nx',label:'Tulangan per sisi arah x',unit:'batang',min:2,max:8},{k:'ny',label:'Tulangan per sisi arah z',unit:'batang',min:2,max:8},{k:'db',label:'Diameter longitudinal',unit:'D',opts:DIAS},{k:'ds',label:'Diameter sengkang',unit:'D',opts:[10,13,16]},
+    ['Tulangan',[{k:'nx',label:'Tulangan per sisi arah x',unit:'batang',min:2,max:8},{k:'ny',label:'Tulangan per sisi arah z',unit:'batang',min:2,max:8},{k:'db',label:'Diameter longitudinal',unit:'D',opts:DIAS},{k:'ds',label:'Diameter sengkang',unit:'D',opts:[10,13,16]},KAIT_FIELD,
       {k:'sLo',label:'Spasi sengkang di ℓo',unit:'mm',min:50,max:300,step:5,show:s=>s==='SRPMK'},{k:'sMid',label:s=>s==='SRPMK'?'Spasi sengkang lainnya':'Spasi sengkang',unit:'mm',min:50,max:400,step:5}]],
     ['Material',[{k:'fc',label:"Mutu beton fc'",unit:'MPa',opts:[20,25,30,35,40]},{k:'fy',label:'Mutu baja fy',unit:'MPa',opts:[280,420]},{k:'cover',label:'Selimut beton',unit:'mm',min:20,max:75,step:5},{k:'lap',label:'Tampilkan sambungan lewatan',type:'bool'}]]
   ],
@@ -20,7 +20,7 @@ export default {
   build(p,sys){
     const K=sys==='SRPMK';
     const {bx,by,H,hb,nx,ny,db,ds,fc,fy,cover}=p;
-    const cg=rectCage({B:bx,H:by,cover,ds,db,nu:nx,nv:ny,hook:K?135:90,allSup:K});
+    const cg=rectCage({B:bx,H:by,cover,ds,db,nu:nx,nv:ny,hook:hookOf(p,K),allSup:K});
     const {pos,ties,hx,hoop,ext}=cg;
     const nBar=pos.length, bmin=Math.min(bx,by), bmax=Math.max(bx,by);
     const lo=K?up50(Math.max(bmax,H/6,450)):0;
@@ -100,7 +100,7 @@ export default {
       add(maxS('mid')<=sMaxMid+0.5,'Spasi sengkang',`s = ${fmt(maxS('mid'))} mm ≤ min(16db; 48ds; b) = ${fmt(sMaxMid)} mm`,'Pasal 25.7.2.1');
       add(true,'Tumpuan lateral tulangan','setiap sudut dan tulangan berselang ditumpu, jarak bersih tak tertumpu ≤ 150 mm','Pasal 25.7.2.3');
       if(p.lap) add(null,'Sambungan lewatan tekan',`ℓ = maks(0,071 fy db; 300) = ${fmt(lapLen)} mm, tepat di atas lantai (praktik umum)`,'Pasal 25.5.5.1');
-      add(null,'Kait sengkang 90°',`perpanjangan ${fmt(ext)} mm. Kait 135° tetap dianjurkan`,'Pasal 25.3.2');
+      kaitInfo(add,hookOf(p,K),ds);
     }
     const derived=`jumlah tulangan = <b>${nBar}D${db}</b>, ρg = <b>${fmt(rho*100,2)}%</b><br>${K?`ℓo = <b>${fmt(lo)}</b> mm, hx = <b>${fmt(hx)}</b> mm, so = <b>${fmt(so)}</b> mm<br>s maks ℓo = <b>${fmt(sMaxLo)}</b> mm, s maks lainnya = <b>${fmt(sMaxMid)}</b> mm<br>`:`s maks = <b>${fmt(sMaxMid)}</b> mm<br>`}panjang lewatan = <b>${fmt(lapLen)}</b> mm<br>kait silang per lapis = <b>${ties.length}</b><br>jumlah sengkang = <b>${st.length}</b>`;
     const layers=[{k:'long',label:'Tulangan longitudinal',color:COL.long,ex:[0,0,0]},{k:'sengkang',label:K?'Sengkang (hoop)':'Sengkang',color:K?COL.conf:COL.mid,ex:[0,0,0]},{k:'ties',label:'Kait silang',color:COL.tie,ex:[0,0,by*1.4]}];

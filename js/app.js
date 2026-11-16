@@ -442,8 +442,8 @@ function comboNav(){
     <button class="play" data-play="1">${ICO_PLAY}Putar tahapan</button></div>`;
   h+=searchBox();
   for(const [g,cs] of GROUPS){
-    h+=`<div data-grp><h4>${g}</h4><div class="tg">`+cs.filter(c=>!c.noCombo).map(c=>{ const why=C.why(c.id,p), on=!why&&!!p[c.id], sub=why||C.hint[c.id]||'';
-      return `<label class="tgl ${why?'dis':''}" data-q="${qOf(c,g)}"><span>${c.name}${sub?`<small>${sub}</small>`:''}</span><input type="checkbox" class="sw" data-tg="${c.id}" ${on?'checked':''} ${why?'disabled':''}></label>`; }).join('')+`</div></div>`;
+    h+=`<div data-grp><h4>${g}</h4><div class="tg">`+cs.filter(c=>!c.noCombo).map(c=>{ const why=C.why(c.id,p), on=!why&&!!p[c.id], wr=!why&&C.warn?.(c.id,p), sub=why||wr||C.hint[c.id]||'';
+      return `<label class="tgl ${why?'dis':''}" data-q="${qOf(c,g)}"><span>${c.name}${sub?`<small${wr?' class="w"':''}>${sub}</small>`:''}</span><input type="checkbox" class="sw" data-tg="${c.id}" ${on?'checked':''} ${why?'disabled':''}></label>`; }).join('')+`</div></div>`;
   }
   h+=`<p class="note hide-q">Komponen yang dinyalakan tersambung otomatis: kait kolom masuk ke fondasi, tulangan balok dan sloof diangkur ke kolom, dan dinding diangkur ke kolom. Fondasi kolom, sloof, dan pengisi bentang (bata atau dinding geser) masing-masing hanya satu jenis, jadi menyalakan yang satu mematikan yang lain. Kombinasi yang tidak lazim tetap bisa dicoba; akibatnya terlihat di tab Cek.</p>`;
   return h;
@@ -465,9 +465,10 @@ function renderParams(c,m){
   const pr=state.params[c.id][sysKey(c)];
   let h='';
   for(const [g,fields] of c.schema){
+    const shown=fields.filter(f=>!f.show||f.show(state.sys,pr));
+    if(!shown.length) continue;  // grup yang semua isinya disembunyikan tidak ditampilkan
     h+=`<div class="grp"><h6>${g}</h6><div class="list">`;
-    for(const f of fields){
-      if(f.show && !f.show(state.sys,pr)) continue;
+    for(const f of shown){
       const lab=typeof f.label==='function'?f.label(state.sys,pr):f.label;
       if(f.type==='bool'){ h+=`<div class="row"><label for="f-${f.k}">${lab}</label><input type="checkbox" id="f-${f.k}" data-k="${f.k}" ${pr[f.k]?'checked':''} class="sw"></div>`; continue; }
       if(f.opts){ h+=`<div class="row"><label for="f-${f.k}">${lab}<small>${f.unit||''}</small></label><select id="f-${f.k}" data-k="${f.k}">${f.opts.map(o=>{const [v,t]=Array.isArray(o)?o:[o,f.unit==='D'?'D'+o:o]; return `<option value="${v}" ${v==pr[f.k]?'selected':''}>${t}</option>`;}).join('')}</select></div>`; continue; }
@@ -486,10 +487,15 @@ function renderParams(c,m){
   document.getElementById('resetP').onclick=()=>{ state.params[c.id][sysKey(c)]=clone(c.defaults[sysKey(c)]); update(true); };
 }
 function renderChecks(m){
-  const cs=m.checks, n=cs.filter(c=>c.ok!==null).length, ok=cs.filter(c=>c.ok===true).length, bad=n-ok;
-  const b=document.getElementById('badge'); b.textContent=bad?`${bad} gagal`:'lolos'; b.className='badge '+(bad?'bad':'good');
-  let h=`<div class="sum ${bad?'bad':'good'}">${bad?`${bad} dari ${n} pemeriksaan tidak terpenuhi`:`${ok} dari ${n} pemeriksaan terpenuhi`}</div>`;
-  h+='<div class="list">'+cs.map(c=>`<div class="chk ${c.ok===null?'info':c.ok?'ok':'bad'}"><div class="ic" role="img" aria-label="${c.ok===null?'info':c.ok?'terpenuhi':'tidak terpenuhi'}">${c.ok===null?'i':c.ok?'✓':'✕'}</div><div><div class="t">${c.t}</div><div class="d">${c.d}</div><div class="p">${pasalTxt(c.p)}</div></div></div>`).join('')+'</div>';
+  // Praktik umum yang tidak diikuti bukan pelanggaran syarat, jadi ditandai kuning sebagai catatan, tidak dihitung gagal
+  const kind=c=>c.ok===null?'info':c.ok?'ok':c.p==='praktik'?'warn':'bad';
+  const cs=m.checks, n=cs.filter(c=>c.ok!==null).length, ok=cs.filter(c=>c.ok===true).length;
+  const bad=cs.filter(c=>kind(c)==='bad').length, warn=cs.filter(c=>kind(c)==='warn').length, st=bad?'bad':warn?'warn':'good';
+  const b=document.getElementById('badge'); b.textContent=bad?`${bad} gagal`:warn?`${warn} catatan`:'lolos'; b.className='badge '+st;
+  const wTxt=`${warn} praktik umum belum diikuti`;
+  let h=`<div class="sum ${st}">${bad?`${bad} dari ${n-warn} syarat tidak terpenuhi${warn?`; ${wTxt}`:''}`:warn?`Syarat terpenuhi; ${wTxt}`:`${ok} dari ${n} pemeriksaan terpenuhi`}</div>`;
+  const IC={info:['i','info'],ok:['✓','terpenuhi'],warn:['!','praktik umum belum diikuti'],bad:['✕','tidak terpenuhi']};
+  h+='<div class="list">'+cs.map(c=>{ const k=kind(c); return `<div class="chk ${k}"><div class="ic" role="img" aria-label="${IC[k][1]}">${IC[k][0]}</div><div><div class="t">${c.t}</div><div class="d">${c.d}</div><div class="p">${pasalTxt(c.p)}</div></div></div>`; }).join('')+'</div>';
   const c0=COMPS[state.comp];
   h+=`<p class="disclaimer">Pemeriksaan ini hanya mencakup detailing dan syarat geometri. Kapasitas lentur, geser, aksial, serta daya dukung tanah tidak dihitung karena memerlukan data beban dan tanah. ${c0.checkNote||'Nomor pasal mengacu pada SNI 2847:2019, adopsi modifikasi dari ACI 318M-14, dan sudah dicocokkan dengan teks SNI. Asumsi: agregat maksimum 20 mm, beton normal, tulangan tanpa lapisan epoksi.'} Pemeriksaan ini tetap alat bantu belajar, bukan pengganti desain oleh perencana.</p>`;
   document.getElementById('pane-cek').innerHTML=h;
@@ -575,6 +581,8 @@ document.getElementById('nav').addEventListener('keydown',e=>{
 document.getElementById('nav').addEventListener('change',e=>{
   const k=e.target.dataset?.tg; if(!k) return; const p=comboP(), on=e.target.checked;
   p[k]=on; if(on) gabungan.combo.excl.forEach(pair=>{ if(pair.includes(k)) pair.forEach(x=>{ if(x!==k) p[x]=false; }); });
+  // Begitu kolom dan balok sama-sama menyala, joint terbentuk, jadi sengkang joint ikut dinyalakan. Tetap bisa dimatikan sendiri.
+  if(on&&(k==='kolom'||k==='balok')&&p.kolom&&p.balok) p.hbk=true;
   // Switch dibiarkan beranimasi dulu; membangun model baru ditunda sampai frame berikutnya selesai digambar.
   // Klik yang datang beruntun digabung menjadi satu kali bangun ulang.
   e.target.closest('.tgl')?.classList.add('busy'); scheduleCombo();

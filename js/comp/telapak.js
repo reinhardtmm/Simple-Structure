@@ -1,15 +1,15 @@
-import {AREA,DIAS,COL,fmt,spread,turtle,rectCage,lift3D,asPerM,ldc,ldhGen,checker} from '../core.js';
+import {AREA,DIAS,COL,fmt,spread,turtle,rectCage,lift3D,asPerM,ldc,ldhGen,checker,KAIT_FIELD,hookOf} from '../core.js';
 
 export default {
   id:'telapak', name:'Fondasi telapak', sysDependent:true,
   defaults:{
-    SRPMB:{B:1500,hf:450,bc:400,nc:3,dbc:16,dsc:10,dbm:16,sm:150,topMat:false,fc:25,fy:420,cover:75},
+    SRPMB:{B:1500,hf:450,bc:400,nc:3,dbc:16,dsc:10,dbm:16,sm:150,topMat:false,fc:25,fy:420,cover:75,kait:90},
     SRPMK:{B:1800,hf:500,bc:450,nc:4,dbc:19,dsc:13,dbm:16,sm:150,topMat:false,fc:30,fy:420,cover:75}
   },
   schema:[
     ['Geometri',[{k:'B',label:'Lebar telapak (bujur sangkar)',unit:'mm',min:800,max:4000,step:50},{k:'hf',label:'Tebal telapak',unit:'mm',min:250,max:1200,step:25},{k:'bc',label:'Sisi kolom',unit:'mm',min:250,max:900,step:25}]],
     ['Tulangan telapak',[{k:'dbm',label:'Diameter tulangan anyaman',unit:'D',opts:[13,16,19,22,25]},{k:'sm',label:'Spasi tulangan anyaman',unit:'mm',min:75,max:450,step:5},{k:'topMat',label:'Pasang anyaman atas',type:'bool'}]],
-    ['Tulangan kolom (stek)',[{k:'nc',label:'Tulangan kolom per sisi',unit:'batang',min:2,max:7},{k:'dbc',label:'Diameter tulangan kolom',unit:'D',opts:DIAS},{k:'dsc',label:'Diameter sengkang kolom',unit:'D',opts:[10,13]}]],
+    ['Tulangan kolom (stek)',[{k:'nc',label:'Tulangan kolom per sisi',unit:'batang',min:2,max:7},{k:'dbc',label:'Diameter tulangan kolom',unit:'D',opts:DIAS},{k:'dsc',label:'Diameter sengkang kolom',unit:'D',opts:[10,13]},KAIT_FIELD]],
     ['Material',[{k:'fc',label:"Mutu beton fc'",unit:'MPa',opts:[20,25,30,35]},{k:'fy',label:'Mutu baja fy',unit:'MPa',opts:[280,420]},{k:'cover',label:'Selimut beton bawah',unit:'mm',min:40,max:100,step:5}]]
   ],
   teori:{
@@ -36,7 +36,7 @@ export default {
       spread(-a2,a2,sm).forEach(x=>bars.push({pts:[[x,yT2,-a2],[x,yT2,a2]],d:dbm,layer:'matT',color:COL.matT,info:iTm}));
     }
     // stek kolom
-    const cg=rectCage({B:bc,H:bc,cover:40,ds:dsc,db:dbc,nu:nc,nv:nc,hook:K?135:90,allSup:K});
+    const cg=rectCage({B:bc,H:bc,cover:40,ds:dsc,db:dbc,nu:nc,nv:nc,hook:hookOf(p,K),allSup:K});
     const yHook=cover+2*dbm+dbc/2, yTop=hf+900, rh=4*dbc, th=12*dbc;
     const iD={t:`Stek kolom ${cg.pos.length}D${dbc}`,b:[`Kait 90° di dasar telapak, ekor ${fmt(th)} mm ${K?'mengarah ke pusat kolom':'mengarah ke luar'}. Bagian lurus vertikal di dalam telapak harus memenuhi panjang penyaluran tekan ℓdc.`],pasal:K?'Pasal 18.13.2.2':'Pasal 16.3.4, 25.4.9'};
     cg.pos.forEach(([x,z])=>{

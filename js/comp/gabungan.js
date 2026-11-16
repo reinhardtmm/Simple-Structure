@@ -1,5 +1,5 @@
 import tg from './tangga.js';
-import {AREA,COL,MAT,BATA,BATA_OPTS,fmt,spread,linspace,turtle,hoop2D,lift3D,rectCage,checker,bataWall,bentBar,trapesium,rubble,devLen,ldc,ldhGen,ldhSeis,PU,PI} from '../core.js';
+import {AREA,COL,MAT,BATA,BATA_OPTS,fmt,spread,linspace,turtle,hoop2D,lift3D,rectCage,checker,bataWall,bentBar,trapesium,rubble,devLen,ldc,ldhGen,ldhSeis,PU,PI,KAIT_FIELD,hookOf} from '../core.js';
 
 /* Mode gabungan: satu portal yang menyambungkan komponen-komponen lain.
    Sumbu x sepanjang portal (kolom di x = 0 dan x = Lb), y ke atas dengan y = 0 di atas sloof (peil lantai), z melintang. */
@@ -30,7 +30,7 @@ export default {
   id:'gabungan', name:'Mode gabungan', sysDependent:true, std:'SNI 2847:2019 dan Persyaratan PU',
   ref:'Rujukan: SNI 2847:2019 untuk elemen beton bertulang, dan persyaratan PU bangunan sederhana untuk pasangan bata, kolom praktis, sloof praktis, dan fondasi batu kali. Rujukan selain SNI 2847:2019 belum dicocokkan dengan dokumen resminya.',
   checkNote:'Mode gabungan memeriksa sambungan antar komponen. Pemeriksaan lengkap setiap komponen ada di halaman komponennya masing-masing. Batas untuk pasangan bata dan elemen praktis diambil dari persyaratan PU dan belum dicocokkan dengan dokumen resminya.',
-  defaults:{SRPMB:{...D0},SRPMK:{...D0}},
+  defaults:{SRPMB:{...D0,kait:90},SRPMK:{...D0}},
   // Aturan kombinasi untuk panel kiri. excl: menyalakan satu mematikan pasangannya. why: alasan toggle tidak bisa dipakai.
   combo:{
     keys:KEYS, presets:PRESETS,
@@ -40,21 +40,24 @@ export default {
       :k==='kolompraktis'&&!p.bata?'Butuh dinding bata'
       :k==='dinding'&&!p.kolom?'Butuh kolom struktur sebagai elemen batas'
       :k==='tangga'&&!p.pelat?'Butuh pelat lantai sebagai tujuan tangga':'',
+    // keterangan pengganti hint saat kombinasi menghasilkan sesuatu yang perlu diperhatikan
+    warn:(k,p)=>k==='hbk'&&p.kolom&&p.balok&&!p.hbk?'Joint terbentuk tanpa sengkang':'',
     hint:{tiang:'Pengganti fondasi telapak',sloof:'Pengganti sloof praktis',sloofpraktis:'150 × 200, 4D10',hbk:'Sengkang di dalam joint',kolompraktis:'Disisipkan tiap ≤ 3 m',balok:'Tanpa kolom menjadi ring balok',
       dinding:'Pengganti dinding bata di bentang ini',tangga:'Dua lajur dengan bordes, naik ke pelat'}
   },
   schema:[
     ['Geometri portal',[{k:'Lb',label:'Bentang as ke as kolom',unit:'mm',min:2000,max:8000,step:100},{k:'Hk',label:'Tinggi atas sloof ke atas pelat',unit:'mm',min:2500,max:5000,step:100},{k:'Df',label:'Atas fondasi kolom di bawah atas sloof',unit:'mm',min:400,max:2500,step:50,show:(s,p)=>p.telapak||p.tiang}]],
     ['Ukuran elemen',[{k:'bc',label:'Sisi kolom',unit:'mm',min:250,max:800,step:25,show:(s,p)=>p.kolom},{k:'b',label:'Lebar balok',unit:'mm',min:120,max:600,step:10,show:(s,p)=>p.balok},{k:'hb',label:'Tinggi balok',unit:'mm',min:150,max:900,step:25,show:(s,p)=>p.balok},{k:'tp',label:'Tebal pelat',unit:'mm',min:90,max:250,step:10,show:(s,p)=>p.pelat},
-      {k:'bs',label:'Lebar sloof',unit:'mm',min:150,max:500,step:25,show:(s,p)=>p.sloof},{k:'hs',label:'Tinggi sloof',unit:'mm',min:200,max:700,step:25,show:(s,p)=>p.sloof},{k:'jenis',label:'Jenis bata',opts:BATA_OPTS,show:(s,p)=>p.bata}]]
+      {k:'bs',label:'Lebar sloof',unit:'mm',min:150,max:500,step:25,show:(s,p)=>p.sloof},{k:'hs',label:'Tinggi sloof',unit:'mm',min:200,max:700,step:25,show:(s,p)=>p.sloof},{k:'jenis',label:'Jenis bata',opts:BATA_OPTS,show:(s,p)=>p.bata}]],
+    ['Detail tulangan',[KAIT_FIELD]]
   ],
   teori:{
     common:`<h3>Mode gabungan</h3><p>Halaman lain memperlihatkan satu komponen. Di sini komponen-komponen itu dipasang menjadi satu portal, sehingga terlihat bagaimana tulangan dari satu elemen masuk dan terangkur ke elemen lain. Nyalakan dan matikan komponen di panel kiri untuk melihat sambungannya muncul atau hilang, atau pilih salah satu preset. Tombol Putar tahapan di bawah preset memperlihatkan urutan pelaksanaannya.</p><p>Tidak semua komponen bisa dinyalakan bersamaan. Fondasi kolom hanya satu jenis (telapak atau tiang), sloof hanya satu jenis (praktis atau struktur), dan bentang di antara kolom diisi dinding bata atau dinding geser, tidak keduanya. Sengkang joint butuh kolom dan balok, kolom praktis butuh dinding bata, dinding geser butuh kolom struktur sebagai elemen batasnya, dan tangga butuh pelat lantai sebagai tujuannya. Kombinasi yang tidak lazim tetap boleh dicoba; akibatnya terlihat di tab Cek.</p><ul><li><b>Fondasi ke kolom</b>: tulangan kolom diteruskan ke dalam fondasi telapak atau pile cap dan diakhiri kait 90°.</li><li><b>Sloof ke kolom</b>: tulangan sloof diangkur ke dalam kolom. Sloof di atas fondasi batu kali diikat dengan angkur.</li><li><b>Balok ke kolom</b>: tulangan balok dibengkokkan ke dalam kolom, dan joint diberi sengkang (hubungan balok-kolom).</li><li><b>Kolom di lantai teratas</b>: tulangan kolom dibengkokkan ke dalam joint.</li><li><b>Dinding bata</b>: duduk di atas sloof, diangkur ke kolom struktur, dan dibagi oleh kolom praktis bila bentang bersihnya lebih dari 3 m.</li><li><b>Dinding geser</b>: kolom di kedua ujung menjadi elemen batas. Tulangan horizontal dinding dikaitkan ke dalam inti kolom, dan tulangan vertikal dikaitkan ke sloof di bawah dan balok di atas.</li><li><b>Tangga</b>: dua lajur dengan bordes di tengah tinggi lantai, di sisi luar pelat. Lajur atas masuk ke pelat lantai, dan tulangan di sudut dalam disilangkan seperti di halaman Tangga.</li></ul>`,
-    SRPMB:`<h4>SRPMB</h4><p>Sengkang memakai kait 90°, jarak sengkang relatif seragam, dan sengkang joint mengikuti Pasal 15.4.2 dengan spasi tidak lebih dari setengah tinggi balok.</p>`,
+    SRPMB:`<h4>SRPMB</h4><p>Sengkang memakai kait 90° (boleh diganti 135° di panel parameter), jarak sengkang relatif seragam, dan sengkang joint mengikuti Pasal 15.4.2 dengan spasi tidak lebih dari setengah tinggi balok.</p>`,
     SRPMK:`<h4>SRPMK</h4><p>Sengkang memakai kait gempa 135°. Sengkang dirapatkan di daerah ℓo kolom dan 2h balok, diteruskan di dalam joint, dan kait tulangan kolom di fondasi diarahkan ke sumbu kolom (Pasal 18.13.2.2).</p>`
   },
   build(p0,sys){
-    const K=sys==='SRPMK', hook=K?135:90;
+    const K=sys==='SRPMK', hook=hookOf(p0,K);
     // aturan kombinasi juga ditegakkan di sini, supaya parameter tersimpan yang bertentangan tetap menghasilkan model yang wajar
     const p={...p0}; if(p.tiang&&p.telapak) p.tiang=false; if(p.sloof&&p.sloofpraktis) p.sloofpraktis=false;
     const fk=p.telapak?'telapak':p.tiang?'tiang':'none', SP=!!p.sloofpraktis, hasS=!!(p.sloof||SP);
@@ -149,7 +152,7 @@ export default {
       labels.push({p:[Lb/2,Hk+80,b/2],t:p.kolom?'balok':'ring balok',stage:'bp2'});
       if(p.kolom){ const avail=bc-COV; add(ldh<=avail,'Kait tulangan balok di dalam kolom',`ℓdh = ${fmt(ldh)} mm ≤ tersedia ${fmt(avail)} mm`,K?'Pasal 18.8.5.1':'Pasal 25.4.3.1');
         if(K) add(bc>=20*dbb,'Kolom terhadap diameter tulangan balok',`hc = ${bc} mm ≥ 20db = ${20*dbb} mm`,'Pasal 18.8.2.3');
-        add(jOn,'Sengkang di dalam joint',!jOn?'joint tanpa sengkang; nyalakan Hubungan balok-kolom':K?'diteruskan dengan spasi 100 mm sepanjang tinggi balok':`disebar sepanjang tinggi balok, spasi ≤ h/2 = ${fmt(hb/2)} mm`,K?'Pasal 18.8.3.1':'Pasal 15.4.2'); }
+        add(jOn,'Sengkang di dalam joint',!jOn?'joint terbentuk tanpa sengkang; nyalakan toggle Hubungan balok-kolom di kelompok Kolom pada panel kiri':K?'diteruskan dengan spasi 100 mm sepanjang tinggi balok':`disebar sepanjang tinggi balok, spasi ≤ h/2 = ${fmt(hb/2)} mm`,K?'Pasal 18.8.3.1':'Pasal 15.4.2'); }
       else if(kpOn) add(null,'Balok sebagai ring balok','tanpa kolom struktur, balok bertumpu pada kolom praktis dan dinding bata',PU);
       else add(false,'Balok tanpa kolom penumpu','nyalakan kolom struktur, atau dinding bata dengan kolom praktis','praktik');
     }
@@ -285,13 +288,16 @@ export default {
       spread(W-800+40,zb0+bbb+150-40,200).forEach(z=>push([[bx0+40,yLt/2,z],[bx1-40,yLt/2,z]],8,'tanggaL',COL.matA,iL,'tgL'));
       spread(bx0+40,bx1-40,200).forEach(x=>push([[x,yLt/2+8,W-800+40],[x,yLt/2+8,zb0+bbb+150-40]],8,'tanggaL',COL.matB,iL,'tgL'));
       const iK={t:'Kolom tangga 200 × 200, 4D13, sengkang D8-150',b:['Menumpu balok bordes. Tulangannya dikaitkan ke fondasi setempat di bawah dan ke dalam balok bordes di atas.'],pasal:'praktik'};
-      const ak=kb/2-25-8-6.5, hk=hoop2D(kb/2-25-4,kb/2-25-4,16,hook,K?75:50);
+      const iKJ={t:'Sengkang joint kolom tangga D8-150',b:['Sengkang kolom diteruskan di dalam pertemuan dengan balok bordes, supaya joint tidak dibiarkan tanpa tulangan transversal.'],pasal:K?'Pasal 18.8.3.1':'Pasal 15.4.2'};
+      const ak=kb/2-25-8-6.5, hk=hoop2D(kb/2-25-4,kb/2-25-4,16,hook,hook===135?75:50);
       kxs.forEach(x=>{ for(const u of [-ak,ak]) for(const v of [-ak,ak]){ const dir=u<0?-1:1, t=turtle(x+u+dir*150,yFt-hFt+75,dir>0?PI:0); t.fwd(150-39).turn(dir>0?-90:90,39).fwd(H2-40-(yFt-hFt+75)-2*39).turn(x<(bx0+bx1)/2?-90:90,39).fwd(150-39);
           push(t.pts.map(([xx,y])=>[xx,y,kzc+v]),13,'tanggaK',COL.long,iK,'tgK1'); }
-        spread(yFt+50,H2-hbb-50,150).forEach(y=>push(lift3D(hk,(u,v,w)=>[x+u,y+w,kzc+v],8.4),8,'tanggaK',COL.mid,iK,'tgK1')); });
+        spread(yFt+50,H2-hbb-50,150).forEach(y=>push(lift3D(hk,(u,v,w)=>[x+u,y+w,kzc+v],8.4),8,'tanggaK',COL.mid,iK,'tgK1'));
+        // di dalam joint dengan balok bordes, di bawah lengkung kait tulangan kolom
+        spread(H2-hbb+50,H2-110,150).forEach(y=>push(lift3D(hk,(u,v,w)=>[x+u,y+w,kzc+v],8.4),8,'tanggaK',COL.webH,iKJ,'tg1')); });
       const iBb={t:'Balok bordes 250 × 450, 2D13 atas dan bawah, sengkang D8-150',b:['Menumpu bordes dan menyalurkan bebannya ke kolom tangga.'],pasal:'praktik'};
       const zbl=bbb/2-30-8-6.5; [H2-30-8-6.5-13,H2-hbb+30+8+6.5+13].forEach(y=>[-zbl,zbl].forEach(dz=>push([[bx0+30,y,kzc+dz],[bx1-30,y,kzc+dz]],13,'tanggaK',COL.top,iBb,'tg1')));
-      const hbbH=hoop2D(bbb/2-30-4,hbb/2-30-4,16,hook,K?75:50);
+      const hbbH=hoop2D(bbb/2-30-4,hbb/2-30-4,16,hook,hook===135?75:50);
       spread(bx0+kb+50,bx1-kb-50,150).forEach(x=>push(lift3D(hbbH,(u,v,w)=>[x+w,H2-hbb/2+v,kzc+u],8.4),8,'tanggaK',COL.mid,iBb,'tg1'));
       [[m1,f1],[m2,f2]].forEach(([m,f],li)=>m.bars.forEach(bb=>push(bb.pts.map(f),bb.d,bb.layer==='bagi'?'tanggaD':'tangga',bb.color,{...bb.info,t:`Tangga lajur ${li+1}: ${bb.info.t}`},'tg1')));
       // tulangan bordes di bagian antara kedua lajur
@@ -300,7 +306,7 @@ export default {
       labels.push({p:[X1+wd/2,H2*0.5,W+Lr*0.5],t:'tangga',stage:'tg2'},{p:[X1+wd,H2+60,W+Lr+600],t:'bordes',stage:'tg2'});
       m1.checks.filter(c=>c.ok!==null).forEach(c=>add(c.ok,`Tangga: ${c.t[0].toLowerCase()+c.t.slice(1)}`,c.d,c.p));
       add(span>=2*800+gap+200,'Ruang tangga di antara kolom',`lebar lajur ${fmt(wd)} mm, dua lajur dan celah ${gap} mm di bentang bersih ${fmt(span)} mm`,'praktik');
-      add(true,'Tumpuan bordes',`balok bordes ${bbb} × ${hbb} ditumpu dua kolom tangga ${kb} × ${kb} di atas fondasi setempat`,'praktik');
+      add(true,'Tumpuan bordes',`balok bordes ${bbb} × ${hbb} ditumpu dua kolom tangga ${kb} × ${kb} di atas fondasi setempat; sengkang kolom diteruskan di dalam joint`,'praktik');
       const zs=spread(50,wd-50,base.sm), zm=zs[Math.floor(zs.length/2)];
       tgView={title:'Potongan tangga lajur pertama',sub:`naik ${n} × ${fmt(H2/n,1)} / ${base.T} mm sampai bordes, tulangan disilangkan di sudut dalam`,n:'x',at:X1+zm+base.dbm*0.6,half:base.dbm*1.5,u:'z',v:'y',maxH:440};
     }

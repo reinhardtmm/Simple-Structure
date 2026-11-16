@@ -1,4 +1,4 @@
-import {AREA,COL,fmt,up50,spread,devLen,ldhSeis,hoop2D,rectCage,lift3D,ashReq,checker} from '../core.js';
+import {AREA,COL,fmt,up50,spread,devLen,ldhSeis,hoop2D,rectCage,lift3D,ashReq,checker,KAIT_FIELD,hookOf} from '../core.js';
 
 /* Balok perangkai (balok kopel) di antara dua dinding geser.
    Rujukan SNI 2847:2019 Pasal 18.10.7 dan Gambar R18.10.7:
@@ -14,7 +14,7 @@ export default {
   sysName:{SRPMB:'dinding biasa',SRPMK:'dinding khusus'},
   sysText:{SRPMB:'Balok perangkai pada dinding struktural biasa. Mengikuti Pasal 9, termasuk syarat balok tinggi bila bentangnya pendek.',SRPMK:'Balok perangkai pada dinding struktural khusus (KDS D sampai F). Mengikuti Pasal 18.10.7.'},
   defaults:{
-    SRPMB:{ln:2000,h:700,bw:300,detail:'konv',nd:4,dbd:19,ds:10,s:125,s2:150,nl:3,dbl:19,sl:125,sp:150,fc:25,fy:420,cover:40},
+    SRPMB:{ln:2000,h:700,bw:300,detail:'konv',nd:4,dbd:19,ds:10,s:125,s2:150,nl:3,dbl:19,sl:125,sp:150,fc:25,fy:420,cover:40,kait:90},
     SRPMK:{ln:1800,h:1000,bw:500,detail:'diag',nd:8,dbd:25,ds:16,s:70,s2:150,nl:4,dbl:16,sl:200,sp:150,fc:30,fy:420,cover:40}
   },
   schema:[
@@ -22,7 +22,7 @@ export default {
     ['Tulangan utama',[{k:'nd',label:'Jumlah batang per grup',opts:[[4,'4 batang'],[6,'6 batang'],[8,'8 batang']],show:(s,p)=>s==='SRPMK'&&p.detail!=='konv'},{k:'dbd',label:'Diameter tulangan diagonal',unit:'D',opts:[16,19,22,25,29,32],show:(s,p)=>s==='SRPMK'&&p.detail!=='konv'},{k:'nl',label:'Jumlah tulangan atas dan bawah',unit:'batang',min:2,max:8,show:(s,p)=>s!=='SRPMK'||p.detail==='konv'},{k:'dbl',label:(s,p)=>s==='SRPMK'&&p.detail!=='konv'?'Diameter tulangan keliling':'Diameter tulangan longitudinal',unit:'D',opts:[10,13,16,19,22,25]},
       {k:'sl',label:(s,p)=>s==='SRPMK'&&p.detail==='diag'?'Spasi tulangan longitudinal keliling':'Spasi tulangan badan (sisi)',unit:'mm',min:75,max:400,step:5,show:(s,p)=>!(s==='SRPMK'&&p.detail==='penuh')}]],
     ['Tulangan transversal',[{k:'ds',label:(s,p)=>s==='SRPMK'&&p.detail==='diag'?'Diameter sengkang grup diagonal':'Diameter sengkang',unit:'D',opts:[10,13,16]},{k:'s',label:(s,p)=>s==='SRPMK'&&p.detail==='diag'?'Spasi sengkang grup (sejajar diagonal)':s==='SRPMK'&&p.detail==='konv'?'Spasi sengkang di daerah 2h':'Spasi sengkang',unit:'mm',min:50,max:300,step:5},
-      {k:'s2',label:'Spasi sengkang di luar 2h',unit:'mm',min:50,max:400,step:5,show:(s,p)=>s==='SRPMK'&&p.detail==='konv'},{k:'sp',label:'Spasi sengkang keliling balok',unit:'mm',min:75,max:400,step:5,show:(s,p)=>s==='SRPMK'&&p.detail==='diag'}]],
+      {k:'s2',label:'Spasi sengkang di luar 2h',unit:'mm',min:50,max:400,step:5,show:(s,p)=>s==='SRPMK'&&p.detail==='konv'},{k:'sp',label:'Spasi sengkang keliling balok',unit:'mm',min:75,max:400,step:5,show:(s,p)=>s==='SRPMK'&&p.detail==='diag'},KAIT_FIELD]],
     ['Material',[{k:'fc',label:"Mutu beton fc'",unit:'MPa',opts:[25,30,35,40]},{k:'fy',label:'Mutu baja fy',unit:'MPa',opts:[280,420]},{k:'cover',label:'Selimut beton',unit:'mm',min:25,max:60,step:5}]]
   ],
   teori:{
@@ -118,7 +118,7 @@ export default {
       ];
     } else {
       /* ===== penulangan konvensional: balok SRPMK menurut 18.6, atau balok Pasal 9 pada dinding biasa ===== */
-      const nl=p.nl, cg=rectCage({B:bw,H:h,cover,ds,db:dbl,nu:nl,nv:2,hook:K?135:90,allSup:false});
+      const nl=p.nl, cg=rectCage({B:bw,H:h,cover,ds,db:dbl,nu:nl,nv:2,hook:hookOf(p,K),allSup:false});
       const d=h-cover-ds-dbl/2, As=nl*AREA[dbl], rho=As/(bw*d);
       const ldh=ldhSeis(fy,fc,dbl), eT=K?up50(3.25*ldh):up50(devLen(fy,fc,dbl,1.3)), eB=K?up50(2.5*ldh):up50(devLen(fy,fc,dbl,1));
       Lw=up50(Math.max(700,eT+200)); E=400;

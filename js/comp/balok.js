@@ -1,26 +1,26 @@
-import {AREA,DIAS,COL,fmt,up50,dn5,linspace,beta1,devLen,ldhGen,ldhSeis,turtle,hoop2D,lift3D,fill,checker,DAGG} from '../core.js';
+import {AREA,DIAS,COL,fmt,up50,dn5,linspace,beta1,devLen,ldhGen,ldhSeis,turtle,hoop2D,lift3D,fill,checker,DAGG,KAIT_FIELD,hookOf,hookExt,kaitInfo} from '../core.js';
 
 export default {
   id:'balok', name:'Balok', sysDependent:true,
   defaults:{
-    SRPMB:{b:300,h:500,ln:5000,hc:500,nTop:3,nBot:3,db:19,ds:10,sT:150,sL:200,fc:30,fy:420,cover:40,lap:true},
+    SRPMB:{b:300,h:500,ln:5000,hc:500,nTop:3,nBot:3,db:19,ds:10,sT:150,sL:200,fc:30,fy:420,cover:40,lap:true,kait:90},
     SRPMK:{b:300,h:500,ln:5000,hc:500,nTop:3,nBot:3,db:19,ds:10,sT:100,sL:200,fc:30,fy:420,cover:40,lap:true}
   },
   schema:[
     ['Penampang',[{k:'b',label:'Lebar b',unit:'mm',min:200,max:800,step:25},{k:'h',label:'Tinggi h',unit:'mm',min:250,max:1200,step:25},{k:'ln',label:'Bentang bersih ℓn',unit:'mm',min:2000,max:12000,step:100},{k:'hc',label:'Dimensi kolom hc',unit:'mm',min:250,max:1000,step:25}]],
-    ['Tulangan',[{k:'nTop',label:'Jumlah tulangan atas',unit:'batang',min:1,max:8},{k:'nBot',label:'Jumlah tulangan bawah',unit:'batang',min:1,max:8},{k:'db',label:'Diameter longitudinal',unit:'D',opts:DIAS},{k:'ds',label:'Diameter sengkang',unit:'D',opts:[10,13,16]},
+    ['Tulangan',[{k:'nTop',label:'Jumlah tulangan atas',unit:'batang',min:1,max:8},{k:'nBot',label:'Jumlah tulangan bawah',unit:'batang',min:1,max:8},{k:'db',label:'Diameter longitudinal',unit:'D',opts:DIAS},{k:'ds',label:'Diameter sengkang',unit:'D',opts:[10,13,16]},KAIT_FIELD,
       {k:'sT',label:s=>s==='SRPMK'?'Spasi sengkang daerah 2h':'Spasi sengkang tumpuan ℓn/4',unit:'mm',min:50,max:300,step:5},{k:'sL',label:'Spasi sengkang lapangan',unit:'mm',min:50,max:400,step:5}]],
     ['Material',[{k:'fc',label:"Mutu beton fc'",unit:'MPa',opts:[20,25,30,35,40]},{k:'fy',label:'Mutu baja fy',unit:'MPa',opts:[280,420]},{k:'cover',label:'Selimut beton',unit:'mm',min:20,max:75,step:5},{k:'lap',label:'Tampilkan sambungan lewatan',type:'bool'}]]
   ],
   teori:{
     common:`<h3>Balok beton bertulang</h3><p>Balok memikul beban dari pelat lalu menyalurkannya ke kolom. Beban itu menimbulkan momen lentur dan gaya geser. Beton kuat menahan tekan tetapi lemah menahan tarik, sehingga sisi yang tertarik diberi tulangan longitudinal. Gaya geser ditahan bersama oleh beton dan sengkang.</p><ul><li><b>Tulangan atas</b> bekerja di daerah tumpuan, tempat momen negatif membuat serat atas tertarik.</li><li><b>Tulangan bawah</b> bekerja di lapangan, tempat momen positif membuat serat bawah tertarik.</li><li><b>Sengkang</b> menahan geser, memegang posisi tulangan longitudinal, dan pada SRPMK juga mengekang beton.</li></ul>`,
-    SRPMB:`<h4>Detailing SRPMB</h4><p>SRPMB dipakai di wilayah dengan risiko gempa rendah, yaitu KDS B. Struktur tidak diharapkan berdeformasi inelastis besar, sehingga syarat detailingnya hampir sama dengan balok biasa di Pasal 9.</p><ul><li>Minimal dua batang tulangan menerus di sisi atas dan bawah <span class="pasal">18.3.2</span>.</li><li>Spasi sengkang maksimum d/2 dan tidak lebih dari 600 mm <span class="pasal">9.7.6.2.2</span>.</li><li>Kait sengkang 90° diizinkan untuk diameter sampai D16 <span class="pasal">25.3.2</span>.</li><li>Sengkang yang lebih rapat di ℓn/4 dekat tumpuan adalah kebiasaan desain, karena geser terbesar terjadi di sana. Ini bukan syarat detailing khusus dari SNI.</li></ul><div class="box">Coba ubah ke SRPMK dengan parameter yang sama. Perhatikan daerah 2h, kait 135°, dan spasi sengkang di sepanjang lewatan.</div>`,
+    SRPMB:`<h4>Detailing SRPMB</h4><p>SRPMB dipakai di wilayah dengan risiko gempa rendah, yaitu KDS B. Struktur tidak diharapkan berdeformasi inelastis besar, sehingga syarat detailingnya hampir sama dengan balok biasa di Pasal 9.</p><ul><li>Minimal dua batang tulangan menerus di sisi atas dan bawah <span class="pasal">18.3.2</span>.</li><li>Spasi sengkang maksimum d/2 dan tidak lebih dari 600 mm <span class="pasal">9.7.6.2.2</span>.</li><li>Kait sengkang 90° diizinkan untuk diameter sampai D16 <span class="pasal">25.3.2</span>. Kait 135° tetap boleh dipakai dan bisa dipilih di parameter Kait sengkang.</li><li>Sengkang yang lebih rapat di ℓn/4 dekat tumpuan adalah kebiasaan desain, karena geser terbesar terjadi di sana. Ini bukan syarat detailing khusus dari SNI.</li></ul><div class="box">Coba ubah ke SRPMK dengan parameter yang sama. Perhatikan daerah 2h, kait 135°, dan spasi sengkang di sepanjang lewatan.</div>`,
     SRPMK:`<h4>Detailing SRPMK</h4><p>SRPMK wajib dipakai untuk KDS D sampai F. Saat gempa kuat, struktur sengaja dibuat meleleh di ujung balok, bukan di kolom. Prinsip ini disebut kolom kuat balok lemah. Daerah sepanjang 2h dari muka kolom disiapkan menjadi sendi plastis.</p><ul><li><b>Sengkang tertutup sepanjang 2h</b> dengan sengkang pertama maksimal 50 mm dari muka kolom <span class="pasal">18.6.4.1</span> <span class="pasal">18.6.4.4</span>.</li><li><b>Spasi di daerah 2h</b> tidak lebih dari d/4, 6db, dan 150 mm. Spasi rapat ini mencegah tulangan tekan menekuk setelah selimut beton terkelupas <span class="pasal">18.6.4.4</span>.</li><li><b>Kait gempa 135°</b> dengan perpanjangan minimal 6db dan 75 mm. Kait 90° bisa terbuka saat selimut lepas, sedangkan kait 135° tetap tertanam di inti beton <span class="pasal">25.3.4</span>.</li><li><b>Sambungan lewatan</b> dilarang di dalam joint dan dalam jarak 2h dari muka kolom. Di sepanjang lewatan spasi sengkang maksimal d/4 dan 100 mm <span class="pasal">18.6.3.3</span>.</li><li><b>Tulangan bawah di muka kolom</b> harus memberi kuat momen positif minimal setengah dari kuat momen negatif, karena arah gempa berbalik <span class="pasal">18.6.3.2</span>.</li><li><b>Dimensi</b> ℓn ≥ 4d dan bw ≥ min(0,3h; 250 mm) <span class="pasal">18.6.2.1</span>.</li></ul>`
   },
   build(p,sys){
     const K=sys==='SRPMK';
     const {b,h,ln,hc,nTop,nBot,db,ds,fc,fy,cover}=p;
-    const d=h-cover-ds-db/2, hook=K?135:90, ext=K?Math.max(6*ds,75):6*ds, r=2.5*ds;
+    const d=h-cover-ds-db/2, hook=hookOf(p,K), ext=hookExt(hook,ds), r=2.5*ds;
     const ha=b/2-cover-ds/2, hb=h/2-cover-ds/2, zl=b/2-cover-ds-db/2, yl=h/2-cover-ds-db/2;
     const zsT=linspace(-zl,zl,nTop), zsB=linspace(-zl,zl,nBot);
     const psiT=(h-(cover+ds+db/2))>300?1.3:1.0;
@@ -61,7 +61,7 @@ export default {
     st.forEach(s=>{
       const zt=s.z==='conf'?(K?`daerah 2h (sendi plastis), s = ${fmt(p.sT)} mm`:`zona tumpuan ℓn/4, s = ${fmt(p.sT)} mm`):s.z==='lap'?`daerah sambungan lewatan, s = ${fmt(sLapReq)} mm`:`daerah lapangan, s ≤ ${fmt(p.sL)} mm`;
       bars.push({pts:lift3D(hoop,(u,v,w)=>[s.x+w,v,u],ds*1.05),d:ds,layer:'sengkang',color:COL[s.z],
-        info:{t:`Sengkang D${ds}`,b:[`Posisi x = ${fmt(s.x)} mm dari muka kolom kiri, ${zt}.`,hook===135?`Sengkang tertutup dengan kait gempa 135°, perpanjangan ${fmt(ext)} mm masuk ke inti beton.`:`Kait 90° dengan perpanjangan ${fmt(ext)} mm.`],pasal:K?(s.z==='conf'?'Pasal 18.6.4.1, 18.6.4.4':s.z==='lap'?'Pasal 18.6.3.3':'Pasal 18.6.4.6'):'Pasal 9.7.6, 25.3.2'}});
+        info:{t:`Sengkang D${ds}`,b:[`Posisi x = ${fmt(s.x)} mm dari muka kolom kiri, ${zt}.`,hook===135?`Sengkang tertutup dengan kait 135°, perpanjangan ${fmt(ext)} mm masuk ke inti beton.`:`Kait 90° dengan perpanjangan ${fmt(ext)} mm.`],pasal:K?(s.z==='conf'?'Pasal 18.6.4.1, 18.6.4.4':s.z==='lap'?'Pasal 18.6.3.3':'Pasal 18.6.4.6'):'Pasal 9.7.6, 25.3.2'}});
     });
     const stubH=h+600, stubW=b+200;
     const concrete=[{box:[0,ln,-h/2,h/2,-b/2,b/2]},{box:[-hc,0,-stubH/2,stubH/2,-stubW/2,stubW/2],kind:'stub'},{box:[ln,ln+hc,-stubH/2,stubH/2,-stubW/2,stubW/2],kind:'stub'}];
@@ -110,7 +110,7 @@ export default {
     } else {
       add(sTact<=sMaxL+0.5&&sLact<=sMaxL+0.5,'Spasi sengkang',`maks s = ${fmt(Math.max(sTact,sLact))} mm ≤ min(d/2; 600) = ${fmt(sMaxL)} mm`,'Pasal 9.7.6.2.2');
       add(null,'Zona tumpuan ℓn/4','rapat di ℓn/4 adalah praktik umum untuk geser, bukan syarat detailing SNI','praktik');
-      add(null,'Kait sengkang 90°',`perpanjangan 6db = ${fmt(ext)} mm, diizinkan untuk D ≤ 16. Kait 135° tetap lebih baik`,'Pasal 25.3.2');
+      kaitInfo(add,hook,ds);
       if(p.lap) add(null,'Sambungan lewatan tulangan atas',`kelas B 1,3ℓd = ${fmt(lapLen)} mm, ditempatkan di tengah bentang (momen negatif kecil)`,'Pasal 25.5.2');
     }
     const derived=`d = <b>${fmt(d,1)}</b> mm<br>As atas = <b>${fmt(AsT)}</b> mm², As bawah = <b>${fmt(AsB)}</b> mm²<br>ℓd tulangan atas = <b>${fmt(ldTop)}</b> mm, lewatan = <b>${fmt(lapLen)}</b> mm<br>ℓdh = <b>${fmt(ldh)}</b> mm<br>${K?`s maks daerah 2h = <b>${fmt(sMaxT)}</b> mm<br>`:''}s maks lapangan = <b>${fmt(sMaxL)}</b> mm<br>jumlah sengkang = <b>${st.length}</b>`;

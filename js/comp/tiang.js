@@ -1,17 +1,17 @@
-import {AREA,DIAS,COL,fmt,up50,spread,turtle,rectCage,lift3D,devLen,ldc,checker} from '../core.js';
+import {AREA,DIAS,COL,fmt,up50,spread,turtle,rectCage,lift3D,devLen,ldc,checker,KAIT_FIELD,hookOf} from '../core.js';
 
 export default {
   id:'tiang', name:'Tiang bor dan pile cap', sysDependent:true,
   refExtra:', serta SNI 8460:2017 untuk perancangan geoteknik',
   defaults:{
-    SRPMB:{np:4,D:400,Lp:4500,sp:1200,e:450,hcap:850,embed:100,npb:6,dbp:16,dsp:10,s1:150,s2:150,bc:400,nc:3,dbc:16,dsc:10,dbm:19,sm:150,fc:25,fy:420,cover:75},
+    SRPMB:{np:4,D:400,Lp:4500,sp:1200,e:450,hcap:850,embed:100,npb:6,dbp:16,dsp:10,s1:150,s2:150,bc:400,nc:3,dbc:16,dsc:10,dbm:19,sm:150,fc:25,fy:420,cover:75,kait:90},
     SRPMK:{np:4,D:600,Lp:4500,sp:1500,e:450,hcap:900,embed:100,npb:10,dbp:16,dsp:13,s1:45,s2:150,bc:450,nc:4,dbc:19,dsc:13,dbm:19,sm:150,fc:30,fy:420,cover:75}
   },
   schema:[
     ['Tiang bor',[{k:'np',label:'Jumlah tiang',opts:[[2,'2 tiang'],[4,'4 tiang']]},{k:'D',label:'Diameter tiang',unit:'mm',opts:[300,400,500,600,800]},{k:'Lp',label:'Panjang tiang yang ditampilkan',unit:'mm',min:2000,max:12000,step:500},{k:'sp',label:'Jarak antar pusat tiang',unit:'mm',min:600,max:3000,step:50},{k:'embed',label:'Tiang masuk ke pile cap',unit:'mm',min:50,max:200,step:5}]],
     ['Tulangan tiang',[{k:'npb',label:'Jumlah tulangan tiang',unit:'batang',min:4,max:16},{k:'dbp',label:'Diameter tulangan tiang',unit:'D',opts:[13,16,19,22,25]},{k:'dsp',label:'Diameter spiral',unit:'D',opts:[8,10,13]},{k:'s1',label:'Jarak spiral daerah kekang',unit:'mm',min:40,max:200,step:5,show:s=>s==='SRPMK'},{k:'s2',label:s=>s==='SRPMK'?'Jarak spiral di bawahnya':'Jarak spiral',unit:'mm',min:50,max:300,step:5}]],
     ['Pile cap',[{k:'e',label:'Jarak pusat tiang ke tepi',unit:'mm',min:200,max:1200,step:25},{k:'hcap',label:'Tebal pile cap',unit:'mm',min:400,max:2000,step:50},{k:'dbm',label:'Diameter tulangan bawah',unit:'D',opts:[16,19,22,25]},{k:'sm',label:'Spasi tulangan bawah',unit:'mm',min:75,max:300,step:5}]],
-    ['Kolom (stek)',[{k:'bc',label:'Sisi kolom',unit:'mm',min:250,max:900,step:25},{k:'nc',label:'Tulangan per sisi',unit:'batang',min:2,max:7},{k:'dbc',label:'Diameter tulangan kolom',unit:'D',opts:DIAS},{k:'dsc',label:'Diameter sengkang kolom',unit:'D',opts:[10,13]}]],
+    ['Kolom (stek)',[{k:'bc',label:'Sisi kolom',unit:'mm',min:250,max:900,step:25},{k:'nc',label:'Tulangan per sisi',unit:'batang',min:2,max:7},{k:'dbc',label:'Diameter tulangan kolom',unit:'D',opts:DIAS},{k:'dsc',label:'Diameter sengkang kolom',unit:'D',opts:[10,13]},KAIT_FIELD]],
     ['Material',[{k:'fc',label:"Mutu beton fc'",unit:'MPa',opts:[20,25,30,35]},{k:'fy',label:'Mutu baja fy',unit:'MPa',opts:[280,420]},{k:'cover',label:'Selimut beton',unit:'mm',min:50,max:100,step:5}]]
   ],
   teori:{
@@ -53,7 +53,7 @@ export default {
     spread(-az,az,200).forEach(z=>bars.push({pts:[[-ax,yt,z],[ax,yt,z]],d:13,layer:'atas',color:COL.matT,info:iTop}));
     spread(-ax,ax,200).forEach(x=>bars.push({pts:[[x,yt-13,-az],[x,yt-13,az]],d:13,layer:'atas',color:COL.matT,info:iTop}));
     // stek kolom
-    const cg=rectCage({B:bc,H:bc,cover:40,ds:dsc,db:dbc,nu:nc,nv:nc,hook:K?135:90,allSup:K});
+    const cg=rectCage({B:bc,H:bc,cover:40,ds:dsc,db:dbc,nu:nc,nv:nc,hook:hookOf(p,K),allSup:K});
     const yHook=y2+dbm/2+dbc/2, yTop=hcap+900, rh=4*dbc, th=12*dbc;
     const iD={t:`Stek kolom ${cg.pos.length}D${dbc}`,b:[`Kait 90° di atas tulangan bawah pile cap, ekor ${K?'mengarah ke pusat kolom':'mengarah ke luar'}.`],pasal:K?'Pasal 18.13.2.2':'Pasal 16.3.4'};
     cg.pos.forEach(([x,z])=>{ let dir=Math.abs(x)>=Math.abs(z)?[Math.sign(x)||1,0]:[0,Math.sign(z)||1]; if(K) dir=[-dir[0],-dir[1]];
