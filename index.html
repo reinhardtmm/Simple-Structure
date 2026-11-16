@@ -32,7 +32,7 @@
   --r-l:14px; --r-m:10px; --r-s:8px;
   --sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Inter",system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
   --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
-  --view-bg:radial-gradient(70% 60% at 12% 8%,rgba(120,170,255,.28),transparent 60%),radial-gradient(60% 55% at 92% 95%,rgba(255,170,120,.22),transparent 60%),radial-gradient(50% 45% at 85% 10%,rgba(160,230,200,.18),transparent 60%),linear-gradient(180deg,#f4f6fa,#eceef3);
+  --view-bg:#f3f4f6;
   --glass-text:rgba(0,0,0,.72); --glass-sep:rgba(60,60,67,.12);
   /* halaman utama: pita utama, pita selang-seling, hover kartu, dan pita gelap */
   --h-a:#ffffff; --h-b:#f5f5f7; --h-bh:#ececf0; --h-dark:#1d1d1f;
@@ -46,7 +46,7 @@
   --tint:#0a84ff; --red:#ff453a; --green:#30d158; --orange:#ff9f0a; --gray:#8e8e93;
   --redText:#ff6961; --greenText:#30d158; --conf:#2dd4bf; --mid:#9ab8d8; --lap:#e0b25c;
   --material:rgba(28,28,30,.72); --shadow:0 8px 28px rgba(0,0,0,.5),0 0 0 .5px rgba(255,255,255,.08);
-  --view-bg:radial-gradient(70% 60% at 12% 8%,rgba(60,110,255,.22),transparent 60%),radial-gradient(60% 55% at 92% 95%,rgba(255,120,60,.14),transparent 60%),radial-gradient(50% 45% at 85% 10%,rgba(60,200,160,.10),transparent 60%),linear-gradient(180deg,#17181c,#0e0f12);
+  --view-bg:#141518;
   --glass-text:rgba(255,255,255,.78); --glass-sep:rgba(255,255,255,.10);
   --h-a:#000000; --h-b:#1c1c1e; --h-bh:#242426; --h-dark:#161617;
   color-scheme:dark;
@@ -58,7 +58,7 @@
   --tint:#0a84ff; --red:#ff453a; --green:#30d158; --orange:#ff9f0a; --gray:#8e8e93;
   --redText:#ff6961; --greenText:#30d158; --conf:#2dd4bf; --mid:#9ab8d8; --lap:#e0b25c;
   --material:rgba(28,28,30,.72); --shadow:0 8px 28px rgba(0,0,0,.5),0 0 0 .5px rgba(255,255,255,.08);
-  --view-bg:radial-gradient(70% 60% at 12% 8%,rgba(60,110,255,.22),transparent 60%),radial-gradient(60% 55% at 92% 95%,rgba(255,120,60,.14),transparent 60%),radial-gradient(50% 45% at 85% 10%,rgba(60,200,160,.10),transparent 60%),linear-gradient(180deg,#17181c,#0e0f12);
+  --view-bg:#141518;
   --glass-text:rgba(255,255,255,.78); --glass-sep:rgba(255,255,255,.10);
   --h-a:#000000; --h-b:#1c1c1e; --h-bh:#242426; --h-dark:#161617;
   color-scheme:dark;
@@ -68,11 +68,6 @@
 .seg button.on[data-sys=SRPMK]{color:#ff6961} .seg button.on[data-sys=SRPMB]{color:#64b5ff}
 .lbl{background:rgba(28,28,30,.82);box-shadow:0 0 0 .5px rgba(255,255,255,.16),0 1px 3px rgba(0,0,0,.4)}
 .lbl.lap{color:var(--lap)}
-.lg{background:radial-gradient(130% 80% at 15% -10%,rgba(255,255,255,.14),rgba(255,255,255,0) 55%),linear-gradient(165deg,rgba(44,44,48,calc(var(--lg-a) + .22)),rgba(22,22,26,calc(var(--lg-b) + .14)));
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.28),inset 0 0 18px rgba(255,255,255,.05),0 0 0 .5px rgba(255,255,255,.10),0 14px 34px rgba(0,0,0,.45),0 3px 8px rgba(0,0,0,.3)}
-.lg::after{background:linear-gradient(150deg,rgba(255,255,255,.45),rgba(255,255,255,.05) 35%,rgba(120,160,255,.12) 55%,rgba(255,255,255,.04) 70%,rgba(255,255,255,.3))}
-.lg .btn{background:rgba(255,255,255,.12);box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 0 0 .5px rgba(255,255,255,.08)}
-.lg .btn:hover{background:rgba(255,255,255,.2)}
 .flyhint kbd{background:#3a3a3c;box-shadow:0 0 0 .5px rgba(255,255,255,.15)}
 input.sw:not(:checked){background:rgba(120,120,128,.36)}
 .btn2:hover{background:#2c2c2e}
@@ -86,11 +81,6 @@ input.sw:not(:checked){background:rgba(120,120,128,.36)}
 .seg button.on[data-sys=SRPMK]{color:#ff6961} .seg button.on[data-sys=SRPMB]{color:#64b5ff}
 .lbl{background:rgba(28,28,30,.82);box-shadow:0 0 0 .5px rgba(255,255,255,.16),0 1px 3px rgba(0,0,0,.4)}
 .lbl.lap{color:var(--lap)}
-.lg{background:radial-gradient(130% 80% at 15% -10%,rgba(255,255,255,.14),rgba(255,255,255,0) 55%),linear-gradient(165deg,rgba(44,44,48,calc(var(--lg-a) + .22)),rgba(22,22,26,calc(var(--lg-b) + .14)));
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.28),inset 0 0 18px rgba(255,255,255,.05),0 0 0 .5px rgba(255,255,255,.10),0 14px 34px rgba(0,0,0,.45),0 3px 8px rgba(0,0,0,.3)}
-.lg::after{background:linear-gradient(150deg,rgba(255,255,255,.45),rgba(255,255,255,.05) 35%,rgba(120,160,255,.12) 55%,rgba(255,255,255,.04) 70%,rgba(255,255,255,.3))}
-.lg .btn{background:rgba(255,255,255,.12);box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 0 0 .5px rgba(255,255,255,.08)}
-.lg .btn:hover{background:rgba(255,255,255,.2)}
 .flyhint kbd{background:#3a3a3c;box-shadow:0 0 0 .5px rgba(255,255,255,.15)}
 input.sw:not(:checked){background:rgba(120,120,128,.36)}
 .btn2:hover{background:#2c2c2e}
@@ -135,6 +125,7 @@ header{display:flex;align-items:center;gap:12px;padding:10px 14px;background:var
 
 /* ===== tata letak ===== */
 main{--navW:224px;--sideW:400px;display:grid;grid-template-columns:var(--navW) 1fr var(--sideW);min-height:0;transition:grid-template-columns .25s cubic-bezier(.2,.8,.2,1)}
+.mid{display:flex;flex-direction:column;min-width:0;min-height:0}
 nav,aside{min-width:0;transition:opacity .15s ease}
 body.hide-nav main{--navW:0px}
 body.hide-side main{--sideW:0px}
@@ -199,43 +190,35 @@ nav .tgl.dis span,nav .tgl.dis small{color:var(--label3)}
 input.sw:disabled{opacity:.4;cursor:default}
 
 /* ===== area 3D ===== */
-#view{position:relative;min-width:0;min-height:0;background:var(--view-bg)}
-#view canvas{display:block;width:100%;height:100%;touch-action:none}
+#view{position:relative;flex:1;min-width:0;min-height:0;background:var(--view-bg)}
+#view canvas{position:absolute;inset:0;display:block;width:100%;height:100%;touch-action:none}
 #labels{position:absolute;inset:0;pointer-events:none;overflow:hidden}
 .lbl{position:absolute;transform:translate(-50%,-100%);font-size:11.5px;font-weight:500;background:rgba(255,255,255,.82);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
   padding:2px 7px;border-radius:6px;white-space:nowrap;color:var(--label);box-shadow:0 0 0 .5px rgba(0,0,0,.12),0 1px 3px rgba(0,0,0,.06)}
 .lbl.conf{color:var(--conf);box-shadow:0 0 0 1px rgba(15,118,110,.45)}
 .lbl.lap{color:#8a5a12;box-shadow:0 0 0 1px rgba(183,121,31,.5)}
 .lbl.mid{color:var(--mid);box-shadow:0 0 0 1px rgba(79,109,138,.45)}
-.lbl.dim{background:transparent;box-shadow:none;color:var(--label2);-webkit-backdrop-filter:none;backdrop-filter:none}
+.lbl.dim{background:transparent;box-shadow:none;color:var(--label);text-shadow:0 0 3px var(--view-bg),0 0 3px var(--view-bg),0 0 6px var(--view-bg);-webkit-backdrop-filter:none;backdrop-filter:none}
 .glass{background:var(--material);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);box-shadow:var(--shadow)}
-/* liquid glass: hanya untuk elemen yang melayang di atas model */
-.lg{--lg-a:.10;--lg-b:.04;
-  background:radial-gradient(130% 80% at 15% -10%,rgba(255,255,255,.55),rgba(255,255,255,0) 55%),linear-gradient(165deg,rgba(255,255,255,calc(var(--lg-a) + .14)),rgba(255,255,255,var(--lg-b)) 60%,rgba(255,255,255,calc(var(--lg-b) + .06)));
-  -webkit-backdrop-filter:blur(7px) saturate(210%) brightness(1.06);backdrop-filter:blur(7px) saturate(210%) brightness(1.06);
-  box-shadow:inset 0 1.5px 0 rgba(255,255,255,1),inset 0 -1px 1px rgba(255,255,255,.5),inset 0 0 18px rgba(255,255,255,.35),inset 0 -10px 18px -12px rgba(0,0,0,.10),0 0 0 .5px rgba(0,0,0,.10),0 14px 34px rgba(30,40,70,.16),0 3px 8px rgba(30,40,70,.08)}
-/* pembiasan (Chrome dan Edge): latar di balik kaca sedikit dibengkokkan. Browser lain memakai deklarasi blur di atas. */
-@supports (backdrop-filter:url(#lg-refract)){ .lg{backdrop-filter:url(#lg-refract) blur(5px) saturate(210%) brightness(1.06)} .lg.dense{backdrop-filter:url(#lg-refract) blur(9px) saturate(200%) brightness(1.04)} }
-.lg::after{content:'';position:absolute;inset:0;border-radius:inherit;padding:1.2px;pointer-events:none;
-  background:linear-gradient(150deg,rgba(255,255,255,1),rgba(255,255,255,.15) 35%,rgba(180,200,255,.25) 55%,rgba(255,255,255,.12) 70%,rgba(255,255,255,.85));
-  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0)}
-.lg.dense{--lg-a:.52;--lg-b:.38}
-.lg .btn{background:rgba(255,255,255,.5);border-radius:999px;box-shadow:inset 0 1px 0 rgba(255,255,255,.95),0 0 0 .5px rgba(0,0,0,.08),0 1px 3px rgba(0,0,0,.06)}
-.lg .btn:hover{background:rgba(255,255,255,.75)}
-@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){ .lg{background:rgba(250,250,252,.96)} }
-@media (prefers-reduced-transparency: reduce){ .lg,.glass{background:rgba(250,250,252,.97);-webkit-backdrop-filter:none;backdrop-filter:none} }
-/* panel Tampilan: kiri bawah, dilipat seperti legenda tetapi membuka ke atas */
-.tampil{position:absolute;left:12px;bottom:12px;width:286px;border-radius:20px;padding:6px;display:flex;flex-direction:column;z-index:2}
-.tampil:not(.open){width:auto}
-.tampil:not(.open) .tp-body{display:none}
-.tampil .lt{display:flex;align-items:center;gap:4px;border:0;background:none;cursor:pointer;font-size:13px;font-weight:600;padding:5px 8px;border-radius:8px;color:var(--label);align-self:flex-start}
-.tampil .lt:hover{background:var(--fill2)}
-.tampil .lt svg{width:12px;height:12px;fill:none;stroke:var(--label2);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;transition:transform .2s}
-.tampil.open .lt svg{transform:rotate(-90deg)}
-.tp-body{padding:2px 6px 4px}
-.tp-body>label,.tp-body>.tp-row{display:grid;grid-template-columns:88px 1fr;align-items:center;gap:8px;font-size:13px;color:var(--glass-text);padding:7px 0;border-bottom:.5px solid var(--glass-sep)}
-.tp-body>label.tp-sw{grid-template-columns:1fr auto}
-.tp-body input[type=range]{width:100%;accent-color:var(--tint)}
+/* Panel yang masih melayang di atas model (kartu info, urutan, petunjuk, toast) dibuat datar dan solid:
+   tanpa blur, kilau, atau gradasi. Kelas .lg dipertahankan sebagai nama panel melayang. */
+.lg{background:var(--bg2);border:1px solid var(--sep);box-shadow:0 2px 10px rgba(0,0,0,.06)}
+.btn{background:var(--fill);border-radius:var(--r-s)}
+.btn:hover{background:color-mix(in srgb,var(--tint) 14%,var(--fill))}
+/* dok tampilan: di bawah kanvas, bukan di atas model. Baris Lapisan (chip per lapisan) dan baris Tampilan (slider dan tombol).
+   Setiap baris bisa dilipat lewat tombol judulnya; baris yang terlipat berjajar dalam satu baris. */
+.dock{flex:none;display:flex;flex-wrap:wrap;gap:0 4px;padding:5px 8px;background:var(--bg2);border-top:.5px solid var(--sep)}
+.dock>div{display:flex;align-items:flex-start;gap:6px;min-width:0}
+.dock>div.open{flex:1 1 100%}
+.dock .lt{flex:none;display:flex;align-items:center;gap:4px;width:98px;min-height:32px;border:0;background:none;cursor:pointer;font-size:13px;font-weight:600;padding:0 6px;border-radius:6px;color:var(--label)}
+.dock .lt:hover{background:var(--fill2)}
+.dock .lt svg{width:12px;height:12px;fill:none;stroke:var(--label2);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;transition:transform .2s}
+.dock .open>.lt svg{transform:rotate(90deg)}
+.dock>div:not(.open)>.tp-body,.dock>div:not(.open)>.lb{display:none}
+.tp-body{flex:1;min-width:0;display:flex;flex-wrap:wrap;align-items:center;gap:2px 18px}
+.tp-body>label,.tp-body>.tp-row{display:flex;align-items:center;gap:8px;min-height:32px;font-size:13px;color:var(--label)}
+.tp-body input[type=range]{width:112px;accent-color:var(--tint)}
+.tp-body .dual{width:140px}
 /* slider Potong dua ujung: dua input range ditumpuk (untuk keyboard); mouse dan sentuhan ditangani wadahnya di app.js.
    Bagian yang tersisa diwarnai di antara kedua ujung. */
 .dual{position:relative;height:22px;--a:0;--b:1;cursor:pointer;touch-action:none}
@@ -248,11 +231,11 @@ input.sw:disabled{opacity:.4;cursor:default}
 .dual input::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:var(--tint);border:0;box-shadow:0 0 0 2px var(--bg2),0 1px 3px rgba(0,0,0,.25)}
 .dual input:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 2px var(--bg2),0 0 0 5px color-mix(in srgb,var(--tint) 45%,transparent)}
 .dual input:focus-visible::-moz-range-thumb{box-shadow:0 0 0 2px var(--bg2),0 0 0 5px color-mix(in srgb,var(--tint) 45%,transparent)}
-.tp-btns{display:flex;flex-wrap:wrap;gap:6px;padding:9px 0 3px}
-.lg .btn{border:0;color:var(--tint);padding:5px 12px;cursor:pointer;font-size:13px;font-weight:500}
+.tp-btns{display:flex;flex-wrap:wrap;gap:6px}
+.btn{border:0;color:var(--tint);min-height:28px;padding:0 12px;cursor:pointer;font-size:13px;font-weight:500}
 #seqBtn[aria-pressed=true],#flyBtn[aria-pressed=true]{background:var(--tint);color:#fff}
 /* panel urutan: kanan bawah */
-.seqbar{position:absolute;right:12px;bottom:12px;width:340px;border-radius:20px;padding:12px 12px 10px;z-index:2}
+.seqbar{position:absolute;right:12px;bottom:12px;width:340px;border-radius:12px;padding:12px 12px 10px;z-index:2}
 .seqbar[hidden]{display:none}
 .sq-row{display:flex;align-items:center;gap:10px}
 .sq-play{flex:none;width:40px;height:40px;border:0;border-radius:50%;background:var(--tint);color:#fff;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;padding:0;box-shadow:0 4px 12px rgba(0,122,255,.35)}
@@ -275,8 +258,7 @@ input.sw:disabled{opacity:.4;cursor:default}
 .sq-dur output{min-width:44px;text-align:right;color:var(--label);font-weight:500}
 #view{container-type:inline-size}
 @container (max-width: 700px){ .seqbar{bottom:auto;top:12px;width:min(340px,calc(100% - 24px))} .hint{display:none} }
-#view:has(.tampil.open) .legend{max-height:calc(100% - 300px)}
-.flyhint{position:absolute;top:12px;left:50%;transform:translateX(-50%);display:none;align-items:center;gap:6px;flex-wrap:wrap;justify-content:center;max-width:calc(100% - 28px);font-size:12.5px;color:var(--label2);padding:7px 14px;border-radius:999px}
+.flyhint{position:absolute;top:12px;left:50%;transform:translateX(-50%);display:none;align-items:center;gap:6px;flex-wrap:wrap;justify-content:center;max-width:calc(100% - 28px);font-size:12.5px;color:var(--label2);padding:7px 14px;border-radius:var(--r-m)}
 .flyhint b{color:var(--label);font-weight:600;margin-right:4px}
 .flyhint kbd{font-family:var(--sans);font-size:11px;font-weight:600;color:var(--label);background:#fff;border-radius:5px;padding:1px 6px;box-shadow:0 0 0 .5px rgba(0,0,0,.15),0 1px 0 rgba(0,0,0,.12)}
 body.flying .flyhint{display:flex}
@@ -287,32 +269,27 @@ body.flying #view canvas{cursor:crosshair}
 .crosshair::before{left:8px;top:0;width:2px;height:18px}
 .crosshair::after{top:8px;left:0;width:18px;height:2px}
 body.flying.locked .crosshair{display:block}
-#flyBtn[aria-pressed=true]{background:var(--tint);color:#fff}
 @media (hover:none){ #flyBtn{display:none} }
-.hint{position:absolute;top:12px;right:12px;font-size:12px;color:var(--glass-text);padding:5px 12px;border-radius:999px}
+.hint{position:absolute;top:12px;right:12px;font-size:12px;color:var(--glass-text);padding:5px 12px;border-radius:var(--r-s)}
+.hint[hidden]{display:none}
 
-/* legenda Lapisan */
-.legend{position:absolute;top:12px;left:12px;min-width:220px;max-width:260px;max-height:calc(100% - 96px);overflow:auto;border-radius:20px;padding:6px;font-size:13px;color:var(--label)}
-.legend .lh{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:2px 2px 2px 0}
-.legend .lt{display:flex;align-items:center;gap:4px;border:0;background:none;cursor:pointer;font-size:13px;font-weight:600;padding:5px 6px;border-radius:6px;color:var(--label)}
-.legend .lt:hover{background:var(--fill2)}
-.legend .lt svg{width:12px;height:12px;fill:none;stroke:var(--label2);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;transition:transform .2s}
-.legend.open .lt svg{transform:rotate(90deg)}
-.legend .lh span{display:flex;gap:2px}
-.legend .lh span button{border:0;background:none;color:var(--tint);font-size:12px;cursor:pointer;padding:4px 6px;border-radius:6px}
-.legend .lh span button:hover{background:var(--fill2)}
-.legend:not(.open) .lb,.legend:not(.open) .lh span{display:none}
-.legend:not(.open){min-width:0}
-.legend .lb{padding:2px 4px 4px}
-.legend label{display:flex;align-items:center;gap:9px;cursor:pointer;padding:5px 4px;border-top:.5px solid var(--glass-sep)}
-.legend label:first-child{border-top:0}
-.legend label span{flex:1}
-.legend label i{display:inline-block;width:16px;height:4px;border-radius:2px;flex:none}
-.legend label i.blk{height:12px;border-radius:3px;box-shadow:inset 0 0 0 .5px rgba(0,0,0,.15)}
-.legend .cn{font-size:11.5px;color:var(--label2);border-top:.5px solid var(--sep);margin-top:4px;padding:6px 4px 2px;line-height:1.45}
+/* Lapisan: satu chip per lapisan, kotak centangnya disembunyikan secara visual tetapi tetap bisa difokus */
+.legend .lb{flex:1;min-width:0;display:flex;flex-wrap:wrap;align-items:center;gap:5px;padding:2px 0}
+.legend label{position:relative;display:inline-flex;align-items:center;gap:7px;min-height:28px;padding:0 10px;border-radius:var(--r-s);border:1px solid var(--sep);background:var(--fill2);cursor:pointer;font-size:12.5px;color:var(--label);user-select:none}
+.legend label:hover{background:var(--fill)}
+.legend label input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer}
+.legend label:not(:has(input:checked)){background:none;border-style:dashed;color:var(--label2)}
+.legend label:not(:has(input:checked)) i{opacity:.3}
+.legend label:has(input:focus-visible){outline:3px solid rgba(0,122,255,.5);outline-offset:1px}
+.legend label i{display:inline-block;width:14px;height:4px;border-radius:2px;flex:none}
+.legend label i.blk{height:11px;border-radius:3px;box-shadow:inset 0 0 0 .5px rgba(0,0,0,.15)}
+.legend .la{display:inline-flex;gap:2px;margin-left:4px}
+.legend .la button{border:0;background:none;color:var(--tint);font-size:12.5px;cursor:pointer;min-height:28px;padding:0 7px;border-radius:6px}
+.legend .la button:hover{background:var(--fill2)}
+.legend .cn{flex-basis:100%;font-size:11.5px;color:var(--label2);line-height:1.45;padding:1px 2px 2px}
 
 /* kartu info tulangan */
-#card{position:absolute;top:48px;right:12px;width:300px;border-radius:20px;padding:12px 14px 14px;display:none}
+#card{position:absolute;top:48px;right:12px;width:300px;border-radius:12px;padding:12px 14px 14px;display:none}
 #card.show{display:block}
 #card h5{margin:0 22px 4px 0;font-size:15px;font-weight:600}
 #card p{margin:4px 0;font-size:13px;color:var(--label2)}
@@ -504,21 +481,19 @@ body.home #tglNav,body.home #tglSide,body.home #sysSeg,body.home #syslabel,body.
   aside{border-left:0;border-top:.5px solid var(--sep)}
   .pane{overflow:visible}
   #card{width:auto;left:12px}
-  .legend{top:10px;left:10px;max-height:45%;font-size:12.5px}
-  .tampil{left:10px;bottom:10px;width:min(286px,calc(100% - 20px))}
+  #view{flex:none}
+  .dock .lt{min-height:40px}
+  .legend label,.legend .la button{min-height:36px}
+  .tp-body>label,.tp-body>.tp-row{flex:1 1 100%;display:grid;grid-template-columns:88px 1fr;min-height:40px}
+  .tp-body>label.tp-sw{grid-template-columns:1fr auto}
+  .tp-body input[type=range],.tp-body .dual{width:100%}
+  .tp-btns{padding:4px 0 6px}
   .draw2{grid-template-columns:1fr}
   .hint{display:none}
 }
 </style>
 </head>
 <body class="sys-SRPMK">
-<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
-  <filter id="lg-refract" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
-    <feTurbulence type="fractalNoise" baseFrequency="0.006 0.009" numOctaves="2" seed="7" result="n"/>
-    <feGaussianBlur in="n" stdDeviation="3" result="ns"/>
-    <feDisplacementMap in="SourceGraphic" in2="ns" scale="34" xChannelSelector="R" yChannelSelector="G"/>
-  </filter>
-</svg>
 <header>
   <button class="pt" id="tglNav" aria-controls="nav" aria-expanded="true" title="Sembunyikan daftar komponen ( [ )" aria-label="Sembunyikan daftar komponen"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="3.5" width="15" height="13" rx="2.5"/><rect class="bar" x="4" y="5" width="4" height="10" rx="1"/></svg></button>
   <div class="brand"><a href="#beranda" title="Halaman utama"><b>Atlas Struktur</b></a><span id="crumb"></span></div>
@@ -585,10 +560,10 @@ body.home #tglNav,body.home #tglSide,body.home #sysSeg,body.home #syslabel,body.
 </section>
 <main>
   <nav id="nav"></nav>
+  <div class="mid">
   <section id="view">
     <div id="labels"></div>
-    <div class="legend lg dense" id="legend"></div>
-    <div class="hint lg">Seret untuk memutar, gulir untuk zoom, klik tulangan untuk detail</div>
+    <div class="hint lg" id="hint">Seret untuk memutar, gulir untuk zoom, klik tulangan untuk detail</div>
     <div class="flyhint lg" id="flyHint"><b>Mode jelajah</b> <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> bergerak · gerakkan mouse untuk melihat · <kbd>E</kbd>/<kbd>Spasi</kbd> naik · <kbd>Q</kbd> turun · <kbd>Shift</kbd> cepat · klik untuk info tulangan · <kbd>F</kbd> keluar</div>
     <div class="crosshair" aria-hidden="true"></div>
     <div id="card" class="lg dense"><button class="x" id="cardX" aria-label="Tutup">✕</button><h5 id="cardT"></h5><div id="cardB"></div></div>
@@ -602,22 +577,26 @@ body.home #tglNav,body.home #tglSide,body.home #sysSeg,body.home #syslabel,body.
       <div class="sq-dots" id="sqDots" role="group" aria-label="Pilih tahap"></div>
       <label class="sq-dur">Durasi per tahap <input type="range" id="sqDur" min="1.5" max="8" step="0.5" value="3"><output id="sqDurV">3 dtk</output></label>
     </div>
-    <div class="tampil lg dense" id="tampil">
-      <div class="tp-body" id="tpBody">
-        <label>Transparansi <input type="range" id="xray" min="0" max="1" step="0.01" value="0.72"></label>
-        <div class="tp-row" role="group" aria-labelledby="cutLbl"><span id="cutLbl">Potong</span>
-          <div class="dual" id="cutDual"><input type="range" id="cut0" min="0" max="1" step="0.005" value="0" aria-label="Potong dari kiri"><input type="range" id="cut" min="0" max="1" step="0.005" value="1" aria-label="Potong dari kanan"></div></div>
-        <label>Urai <input type="range" id="explode" min="0" max="1" step="0.01" value="0"></label>
-        <label class="tp-sw">Label <input type="checkbox" class="sw" id="labelsOn" checked></label>
-        <div class="tp-btns">
-          <button class="btn" id="seqBtn" aria-pressed="false" title="Animasi urutan pelaksanaan" hidden>Urutan</button>
-          <button class="btn" id="flyBtn" aria-pressed="false" title="Mode jelajah (F)">Jelajah</button>
-          <button class="btn" id="resetCam">Reset kamera</button>
-        </div>
-      </div>
-      <button class="lt" id="tpToggle" aria-expanded="true" aria-controls="tpBody"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M4 2.5 7.5 6 4 9.5"/></svg>Tampilan</button>
-    </div>
   </section>
+  <div class="dock" id="dock">
+    <div class="legend" id="legend"></div>
+    <div class="tampil" id="tampil">
+        <button class="lt" id="tpToggle" aria-expanded="true" aria-controls="tpBody"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M4 2.5 7.5 6 4 9.5"/></svg>Tampilan</button>
+        <div class="tp-body" id="tpBody">
+          <label>Transparansi <input type="range" id="xray" min="0" max="1" step="0.01" value="0.72"></label>
+          <div class="tp-row" role="group" aria-labelledby="cutLbl"><span id="cutLbl">Potong</span>
+            <div class="dual" id="cutDual"><input type="range" id="cut0" min="0" max="1" step="0.005" value="0" aria-label="Potong dari kiri"><input type="range" id="cut" min="0" max="1" step="0.005" value="1" aria-label="Potong dari kanan"></div></div>
+          <label>Urai <input type="range" id="explode" min="0" max="1" step="0.01" value="0"></label>
+          <label class="tp-sw">Label <input type="checkbox" class="sw" id="labelsOn" checked></label>
+          <div class="tp-btns">
+            <button class="btn" id="seqBtn" aria-pressed="false" title="Animasi urutan pelaksanaan" hidden>Urutan</button>
+            <button class="btn" id="flyBtn" aria-pressed="false" title="Mode jelajah (F)">Jelajah</button>
+            <button class="btn" id="resetCam">Reset kamera</button>
+          </div>
+        </div>
+    </div>
+  </div>
+  </div>
   <aside id="side">
     <div class="tabs seg" id="tabs" role="tablist" aria-label="Isi panel">
       <button data-tab="param" class="on" role="tab" id="tab-param" aria-controls="pane-param" aria-selected="true">Parameter</button>

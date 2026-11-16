@@ -225,19 +225,28 @@ const labelLayer=document.getElementById('labels'); const _v=new THREE.Vector3()
 function drawLabels(){
   if(!state.view.labels){ labelLayer.innerHTML=''; return; }
   const w=view.clientWidth,h=view.clientHeight; let html='';
+  // Label yang saling menimpa digeser ke atas label yang sudah ditempatkan. Lebar ditaksir dari jumlah karakter.
+  const placed=[], TH=22;
   for(const L of labels){
     _v.set(L.p[0]*S,L.p[1]*S,L.p[2]*S);
     if(seq.on&&L.stage!=null&&L.stage>seq.step) continue;
     const g=groups[L.follow||L._g||'beton']; if(L.follow!==null && g){ if(!g.visible && L.follow) continue; _v.add(g.position); }
     if(!inCut(_v)) continue;
     _v.project(camera); if(_v.z>1) continue;
-    html+=`<div class="lbl ${L.c||'dim'}" style="left:${(_v.x*.5+.5)*w}px;top:${(-_v.y*.5+.5)*h}px">${L.t}</div>`;
+    const x=(_v.x*.5+.5)*w, tw=String(L.t).replace(/<[^>]+>/g,'').length*6.7+16; let y=(-_v.y*.5+.5)*h;
+    for(let n=0;n<8;n++){ const hit=placed.find(r=>Math.abs(r.x-x)<(r.w+tw)/2+3&&Math.abs(r.y-y)<TH); if(!hit) break; y=hit.y-TH; }
+    placed.push({x,y,w:tw});
+    html+=`<div class="lbl ${L.c||'dim'}" style="left:${x}px;top:${y}px">${L.t}</div>`;
   }
   labelLayer.innerHTML=html;
 }
 /* pick */
 const ray=new THREE.Raycaster(); const mv=new THREE.Vector2(); let downAt=null;
 renderer.domElement.addEventListener('pointerdown',e=>{downAt=[e.clientX,e.clientY];});
+// Petunjuk cara memutar hanya tampil sampai model pertama kali disentuh, lalu tidak muncul lagi.
+{ const hint=document.getElementById('hint'); let seen=null; try{ seen=localStorage.getItem('atlas-tulangan-hint'); }catch(e){}
+  if(seen) hint.hidden=true;
+  else renderer.domElement.addEventListener('pointerdown',()=>{ hint.hidden=true; try{ localStorage.setItem('atlas-tulangan-hint','1'); }catch(e){} },{once:true}); }
 renderer.domElement.addEventListener('pointerup',e=>{
   if(!downAt||Math.hypot(e.clientX-downAt[0],e.clientY-downAt[1])>5) return;
   const r=renderer.domElement.getBoundingClientRect();
@@ -438,8 +447,9 @@ function comboNav(){
 function renderLayers(){
   const vis=state.vis[state.comp], isBlock=L=>L.k==='beton'||L.block;
   const el=document.getElementById('legend'), open=el.classList.contains('open');
-  let h=`<div class="lh"><button class="lt" aria-expanded="${open}" aria-controls="legendBody"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M4 2.5 7.5 6 4 9.5"/></svg>Lapisan</button><span><button data-all="1">Semua</button><button data-all="0">Tulangan saja</button></span></div>`;
-  h+=`<div class="lb" id="legendBody">`+layerDefs.map(L=>`<label><i style="background:${L.color}" class="${isBlock(L)?'blk':''}"></i><span>${L.label}</span><input type="checkbox" class="sw" data-layer="${L.k}" ${isOn(L)?'checked':''}></label>`).join('');
+  let h=`<button class="lt" aria-expanded="${open}" aria-controls="legendBody"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M4 2.5 7.5 6 4 9.5"/></svg>Lapisan</button>`;
+  h+=`<div class="lb" id="legendBody">`+layerDefs.map(L=>`<label><i style="background:${L.color}" class="${isBlock(L)?'blk':''}"></i><span>${L.label}</span><input type="checkbox" data-layer="${L.k}" ${isOn(L)?'checked':''}></label>`).join('');
+  h+=`<span class="la"><button data-all="1">Semua</button><button data-all="0">Tulangan saja</button></span>`;
   if(model.colorNote) h+=`<div class="cn">${model.colorNote}</div>`;
   h+=`</div>`;
   el.innerHTML=h;
