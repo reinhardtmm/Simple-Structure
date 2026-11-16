@@ -15,6 +15,10 @@ import batukali from './comp/batukali.js';
 import sloofpraktis from './comp/sloofpraktis.js';
 import kolompraktis from './comp/kolompraktis.js';
 import bata from './comp/bata.js';
+import kolombulat from './comp/kolombulat.js';
+import pelatbukaan from './comp/pelatbukaan.js';
+import balokkopel from './comp/balokkopel.js';
+import ringbalok from './comp/ringbalok.js';
 import gabungan from './comp/gabungan.js';
 import { initHome } from './home.js';
 
@@ -22,9 +26,9 @@ import { initHome } from './home.js';
 // Mode gabungan tidak masuk kelompok mana pun: tombolnya ada di bawah daftar, dan saat aktif panel kiri berubah menjadi toggle.
 const GROUPS=[
   ['Fondasi',[batukali,telapak,tiang]],
-  ['Sloof dan balok',[sloofpraktis,sloof,balok]],
-  ['Kolom',[kolompraktis,kolom,hbk]],
-  ['Pelat dan tangga',[pelat,tangga]],
+  ['Sloof dan balok',[sloofpraktis,ringbalok,sloof,balok,balokkopel]],
+  ['Kolom',[kolompraktis,kolom,kolombulat,hbk]],
+  ['Pelat dan tangga',[pelat,pelatbukaan,tangga]],
   ['Dinding',[bata,dinding]]
 ];
 const COMPS=Object.fromEntries([...GROUPS.flatMap(g=>g[1]),gabungan].map(c=>[c.id,c]));
@@ -396,7 +400,7 @@ const ICO_CHECK='<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6.5 4.8
 const ICO_PLAY='<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M3.5 2.2v7.6L9.8 6z"/></svg>';
 // kata kunci tambahan untuk pencarian, termasuk istilah Inggris dan ejaan sehari-hari
 const KW={batukali:'pondasi rubble',telapak:'pondasi footing pad foot plat',tiang:'pondasi pile bored bore strauss',sloofpraktis:'tie beam',sloof:'tie beam',balok:'beam ring',
-  kolompraktis:'column',kolom:'column',hbk:'joint hbk beam column',pelat:'slab lantai',tangga:'stair bordes',bata:'tembok pasangan wall brick hebel',dinding:'shear wall struktural'};
+  kolompraktis:'column',kolom:'column',hbk:'joint hbk beam column',pelat:'slab lantai',tangga:'stair bordes',bata:'tembok pasangan wall brick hebel',kolombulat:'column circular lingkaran spiral bundar',pelatbukaan:'slab opening lubang void shaft trimmer',balokkopel:'coupling beam perangkai diagonal dinding geser link',ringbalok:'ring balk latei lintel bukaan pintu jendela balok keliling',dinding:'shear wall struktural'};
 const norm=s=>String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
 const escA=s=>String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
 const qOf=(c,g)=>escA(`${c.name} ${g} ${c.id} ${KW[c.id]||''}`);
@@ -438,7 +442,7 @@ function comboNav(){
     <button class="play" data-play="1">${ICO_PLAY}Putar tahapan</button></div>`;
   h+=searchBox();
   for(const [g,cs] of GROUPS){
-    h+=`<div data-grp><h4>${g}</h4><div class="tg">`+cs.map(c=>{ const why=C.why(c.id,p), on=!why&&!!p[c.id], sub=why||C.hint[c.id]||'';
+    h+=`<div data-grp><h4>${g}</h4><div class="tg">`+cs.filter(c=>!c.noCombo).map(c=>{ const why=C.why(c.id,p), on=!why&&!!p[c.id], sub=why||C.hint[c.id]||'';
       return `<label class="tgl ${why?'dis':''}" data-q="${qOf(c,g)}"><span>${c.name}${sub?`<small>${sub}</small>`:''}</span><input type="checkbox" class="sw" data-tg="${c.id}" ${on?'checked':''} ${why?'disabled':''}></label>`; }).join('')+`</div></div>`;
   }
   h+=`<p class="note hide-q">Komponen yang dinyalakan tersambung otomatis: kait kolom masuk ke fondasi, tulangan balok dan sloof diangkur ke kolom, dan dinding diangkur ke kolom. Fondasi kolom, sloof, dan pengisi bentang (bata atau dinding geser) masing-masing hanya satu jenis, jadi menyalakan yang satu mematikan yang lain. Kombinasi yang tidak lazim tetap bisa dicoba; akibatnya terlihat di tab Cek.</p>`;

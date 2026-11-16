@@ -374,7 +374,9 @@ body.home #tglNav,body.home #tglSide,body.home #sysSeg,body.home #syslabel,body.
 .home{overflow:auto;min-height:0;background:var(--h-a);color:var(--label)}
 .home[hidden]{display:none}
 .h-in{max-width:1120px;margin:0 auto;padding:0 28px}
-.home h1{font-size:64px;line-height:1.02;font-weight:700;letter-spacing:-.032em;margin:0 0 32px;text-wrap:balance}
+.home h1{font-size:64px;line-height:1.02;font-weight:700;letter-spacing:-.032em;margin:0 0 14px;text-wrap:balance}
+.h-lead{font-size:19px;line-height:1.45;color:var(--label2);max-width:460px;margin:0 0 28px;text-wrap:pretty}
+.h-acts{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
 .home h2{font-size:32px;line-height:1.15;font-weight:700;letter-spacing:-.022em;margin:0;text-wrap:balance}
 .h-hero{background:var(--view-bg)}
 .h-hero .h-in{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:24px;align-items:center;padding-top:48px;padding-bottom:48px;min-height:min(580px,calc(100vh - 53px))}
@@ -382,16 +384,18 @@ body.home #tglNav,body.home #tglSide,body.home #sysSeg,body.home #syslabel,body.
 .h-pill{display:inline-flex;align-items:center;justify-content:center;min-height:42px;border-radius:999px;padding:0 20px;font-size:15px;font-weight:500;text-decoration:none;cursor:pointer;border:1px solid var(--tint);transition:transform .15s,background .15s,filter .15s}
 .h-pill.pri{background:var(--tint);color:#fff}
 .h-pill.pri:hover{filter:brightness(1.08)}
+.h-pill.sec{background:none;color:var(--tint);min-height:52px;padding:0 24px;font-size:17px}
+.h-pill.sec:hover{background:color-mix(in srgb,var(--tint) 10%,transparent)}
 .h-pill:active{transform:scale(.97)}
 /* tombol Mulai: satu-satunya aksi di pembuka, dibuat lebar supaya jelas sebagai titik masuk */
-.h-start{gap:8px;min-width:260px;min-height:52px;font-size:17px;font-weight:600}
+.h-start{gap:8px;min-width:190px;min-height:52px;font-size:17px;font-weight:600}
 .h-start svg,.h-capt svg{flex:none;width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .h-start svg{width:14px;height:14px;stroke-width:2}
-.h-stage{position:relative;height:460px;isolation:isolate}
-.h-stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block;transition:opacity .38s ease}
+.h-stage{position:relative;height:460px;isolation:isolate;display:flex;flex-direction:column}
+.h-stage canvas{flex:1 1 0;min-height:0;width:100%;height:0;display:block;transition:opacity .38s ease}
 .h-stage canvas.fade{opacity:0}
-.h-stage::after{content:'';position:absolute;left:16%;right:16%;bottom:9%;height:36px;border-radius:50%;background:radial-gradient(closest-side,rgba(20,30,60,.22),transparent);z-index:-1}
-.h-capt{position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:center;align-items:center;gap:6px;flex-wrap:wrap;font-size:12.5px;color:var(--label2);text-align:center}
+.h-stage::after{content:'';position:absolute;left:16%;right:16%;bottom:calc(9% + 36px);height:36px;border-radius:50%;background:radial-gradient(closest-side,rgba(20,30,60,.22),transparent);z-index:-1}
+.h-capt{flex:none;margin:0;padding-top:8px;display:flex;justify-content:center;align-items:center;gap:6px;flex-wrap:wrap;font-size:12.5px;color:var(--label2);text-align:center}
 .h-capt a{display:inline-flex;align-items:center;gap:3px;color:var(--tint);text-decoration:none;font-weight:500}
 .h-capt a:hover{text-decoration:underline}
 .h-feat{background:var(--h-dark);color:#f5f5f7;padding:72px 0}
@@ -418,6 +422,7 @@ body.home #tglNav,body.home #tglSide,body.home #sysSeg,body.home #syslabel,body.
 .h-tile b{font-size:15.5px;font-weight:600;margin-top:1px;letter-spacing:-.01em}
 .h-tile small{font-size:12.5px;color:var(--label2);margin-top:2px}
 .h-ref{background:var(--h-b);padding:56px 0}
+.h-ref .h-in{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:48px}
 .h-ref h3{font-size:22px;font-weight:700;letter-spacing:-.015em;margin:0 0 12px}
 .h-ref ul{margin:0;padding:0;list-style:none}
 .h-ref li{font-size:14px;line-height:1.45;color:var(--label2);padding:8px 0;border-top:.5px solid var(--sep)}
@@ -426,7 +431,9 @@ body.home #tglNav,body.home #tglSide,body.home #sysSeg,body.home #syslabel,body.
 @media (max-width: 980px){
   .home{overflow:visible}
   .h-hero .h-in{grid-template-columns:1fr;min-height:0;padding-top:36px;padding-bottom:28px;gap:8px}
-  .home h1{font-size:48px;margin-bottom:24px}
+  .home h1{font-size:48px}
+  .h-lead{font-size:17px;margin-bottom:22px}
+  .h-ref .h-in{grid-template-columns:1fr;gap:36px}
   .home h2{font-size:27px}
   .h-stage{height:340px}
   .h-fgrid{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -435,7 +442,7 @@ body.home #tglNav,body.home #tglSide,body.home #sysSeg,body.home #syslabel,body.
 @media (max-width: 560px){
   .h-in{padding:0 16px}
   .home h1{font-size:40px}
-  .h-start{width:100%;min-width:0}
+  .h-start,.h-pill.sec{width:100%;min-width:0}
   .h-stage{height:280px}
   .h-feat,.h-comp{padding:52px 0 40px}
   .h-fgrid{grid-template-columns:1fr;gap:22px}
@@ -513,12 +520,25 @@ body.home #tglNav,body.home #tglSide,body.home #sysSeg,body.home #syslabel,body.
       <div>
         <p class="h-eyebrow">SNI 2847:2019 · SRPMB dan SRPMK</p>
         <h1 id="homeTitle">Atlas Struktur</h1>
-        <a class="h-pill pri h-start" id="homeGo" href="#balok">Mulai<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6h7M6.3 2.8 9.5 6 6.3 9.2"/></svg></a>
+        <p class="h-lead">Lihat detailing tulangan beton bertulang dan elemen praktis bangunan sederhana dalam 3D, lengkap dengan gambar 2D dan pemeriksaan syarat SNI.</p>
+        <div class="h-acts">
+          <a class="h-pill pri h-start" id="homeGo" href="#balok">Mulai<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6h7M6.3 2.8 9.5 6 6.3 9.2"/></svg></a>
+          <button type="button" class="h-pill sec" id="homePick">Pilih komponen</button>
+        </div>
       </div>
       <div class="h-stage" id="homeStage">
         <canvas id="homeCv" role="img" aria-label="Model 3D gabungan yang berputar pelan: fondasi, sloof, kolom, balok, pelat, dinding, dan tangga"></canvas>
         <p class="h-capt"><span id="homeCapT">Mode gabungan: fondasi sampai pelat dalam satu model.</span> <a id="homeCapA" href="#gabungan">Buka model ini<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M4.5 2.5 8 6l-3.5 3.5"/></svg></a></p>
       </div>
+    </div>
+  </div>
+  <div class="h-comp" id="homeTiles">
+    <div class="h-in">
+      <div class="h-head">
+        <h2>Pilih komponen</h2>
+        <p>Disusun seperti urutan membangun, dari fondasi sampai dinding. Di setiap kelompok, elemen praktis untuk bangunan sederhana didahulukan.</p>
+      </div>
+      <div id="homeGroups"></div>
     </div>
   </div>
   <div class="h-feat">
@@ -536,24 +556,27 @@ body.home #tglNav,body.home #tglSide,body.home #sysSeg,body.home #syslabel,body.
       </div>
     </div>
   </div>
-  <div class="h-comp" id="homeTiles">
-    <div class="h-in">
-      <div class="h-head">
-        <h2>Pilih komponen</h2>
-        <p>Disusun seperti urutan membangun, dari fondasi sampai dinding. Di setiap kelompok, elemen praktis untuk bangunan sederhana didahulukan.</p>
-      </div>
-      <div id="homeGroups"></div>
-    </div>
-  </div>
   <div class="h-ref">
     <div class="h-in">
-      <h3>Dasar rujukan</h3>
-      <ul>
-        <li><b>SNI 2847:2019</b> Persyaratan beton struktural untuk bangunan gedung, untuk semua komponen beton bertulang.</li>
-        <li><b>SNI 1726:2019</b> untuk kategori desain seismik yang menentukan SRPMB atau SRPMK.</li>
-        <li><b>SNI 15-2094-2000</b> untuk ukuran bata merah pejal.</li>
-        <li><b>Persyaratan teknis bangunan gedung sederhana tahan gempa</b> dari Kementerian PU untuk elemen praktis. Beberapa batasnya belum dicocokkan dengan dokumen resmi.</li>
-      </ul>
+      <div>
+        <h3>Dasar rujukan</h3>
+        <ul>
+          <li><b>SNI 2847:2019</b> Persyaratan beton struktural untuk bangunan gedung, untuk semua komponen beton bertulang.</li>
+          <li><b>SNI 1726:2019</b> untuk kategori desain seismik yang menentukan SRPMB atau SRPMK.</li>
+          <li><b>SNI 15-2094-2000</b> untuk ukuran bata merah pejal.</li>
+          <li><b>Persyaratan teknis bangunan gedung sederhana tahan gempa</b> dari Kementerian PU untuk elemen praktis. Beberapa batasnya belum dicocokkan dengan dokumen resmi.</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Istilah yang dipakai</h3>
+        <ul>
+          <li><b>SRPMB</b> Sistem Rangka Pemikul Momen Biasa. Detailing umum untuk wilayah dengan risiko gempa rendah (KDS B).</li>
+          <li><b>SRPMK</b> Sistem Rangka Pemikul Momen Khusus. Detailing daktail untuk wilayah dengan risiko gempa tinggi (KDS D sampai F).</li>
+          <li><b>KDS</b> Kategori Desain Seismik, ditentukan menurut SNI 1726:2019.</li>
+          <li><b>HBK</b> Hubungan balok-kolom, yaitu daerah pertemuan balok dan kolom.</li>
+          <li><b>Elemen praktis</b> Kolom, sloof, dan ring balok kecil yang mengikat dinding bata pada bangunan sederhana.</li>
+        </ul>
+      </div>
     </div>
   </div>
   <div class="h-in h-foot">Atlas Struktur adalah alat bantu belajar. Hasilnya tidak menggantikan perhitungan dan gambar kerja dari perencana yang berwenang.</div>

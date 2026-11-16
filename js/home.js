@@ -36,6 +36,8 @@ export function initHome({groups,staticModel}){
       `<span class="h-tag${PRAKTIS(c)?' pr':''}">${PRAKTIS(c)?'Elemen praktis':c.sysDependent?'SRPMB dan SRPMK':'Struktur'}</span>`+
       `<b>${c.name}</b><small>${c.std||'SNI 2847:2019'}</small></a>`).join('')+`</div></div>`).join('');
   const go=document.getElementById('homeGo');
+  // Pilih komponen menggulir ke kartu komponen. Memakai tombol, bukan tautan hash, karena hash dipakai untuk rute komponen.
+  document.getElementById('homePick').onclick=()=>document.getElementById('homeTiles').scrollIntoView({block:'start'});
 
   /* Model pembuka bergilir: mode gabungan lebih dulu, lalu setiap komponen sesuai urutan membangun, berganti setiap
      7 detik dengan transisi memudar. Pergantian berhenti saat kursor atau fokus ada di area model, saat halaman tidak
@@ -67,7 +69,7 @@ export function initHome({groups,staticModel}){
   function swap(){ if(swapping) return; swapping=true;
     cv.classList.add('fade');
     setTimeout(()=>{ put(idx+1); cv.classList.remove('fade'); swapping=false; },FADE_MS); }
-  function size(){ if(!hero) return; const w=stage.clientWidth, h=stage.clientHeight; if(!w||!h) return;
+  function size(){ if(!hero) return; const w=cv.clientWidth, h=cv.clientHeight; if(!w||!h) return;
     hero.renderer.setPixelRatio(Math.min(2,devicePixelRatio)); hero.renderer.setSize(w,h,false);
     hero.camera.aspect=w/h; frame(hero.camera,hero.pivot,hero.dir,hero.k); draw(); }
   function draw(){ try{ hero.renderer.render(hero.scene,hero.camera); }catch(e){ console.error('Gagal merender model pembuka:',e); } }
